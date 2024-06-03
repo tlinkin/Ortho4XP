@@ -9,6 +9,7 @@ Previews/
 Extents/Auto
 tmp/
 Tiles/
+venv/
 **/Ortho4XP.log
 **/__pycache__
 **/Thumbs.db
