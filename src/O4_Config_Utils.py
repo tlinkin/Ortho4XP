@@ -442,6 +442,7 @@ list_global_cfg = (
     + list_mesh_vars
     + list_mask_vars
     + list_dsf_vars
+    + list_other_vars
 )
 
 ################################################################################
