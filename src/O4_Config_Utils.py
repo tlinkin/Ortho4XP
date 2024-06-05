@@ -113,6 +113,12 @@ a particular server.",
         "default": "",
         "hint": "The directory containing the sceneries with the overlays you would like to extract. You need to select the level of directory just _ABOVE_ Earth nav data.",
     },
+    "custom_overlay_src_alternate": {
+        "module": "OVL",
+        "type": str,
+        "default": "",
+        "hint": "If sceneries with overlays are not found in custom_overlay_src, set an alternate directory to search.",
+    },
     # Vector
     "apt_smoothing_pix": {
         "type": int,
@@ -366,9 +372,10 @@ list_app_vars = [
     "ovl_exclude_net",
     "custom_scenery_dir",
     "custom_overlay_src",
+    "custom_overlay_src_alternate"
 ]
-gui_app_vars_short = list_app_vars[:-2]
-gui_app_vars_long = list_app_vars[-2:]
+gui_app_vars_short = list_app_vars[:-3]
+gui_app_vars_long = list_app_vars[-3:]
 
 list_vector_vars = [
     "apt_smoothing_pix",
@@ -435,6 +442,7 @@ list_global_cfg = (
     + list_mesh_vars
     + list_mask_vars
     + list_dsf_vars
+    + list_other_vars
 )
 
 ################################################################################
@@ -449,7 +457,7 @@ for var in cfg_vars:
 ################################################################################
 # Update from Global Ortho4XP.cfg
 try:
-    f = open(os.path.join(FNAMES.Ortho4XP_dir, "Ortho4XP.cfg"), "r")
+    f = open(os.path.join(FNAMES.resource_path("Ortho4XP.cfg")), "r")
     for line in f.readlines():
         line = line.strip()
         if not line:
@@ -1047,7 +1055,7 @@ class Ortho4XP_Config(tk.Toplevel):
 
     def load_global_cfg(self):
         try:
-            f = open(os.path.join(FNAMES.Ortho4XP_dir, "Ortho4XP.cfg"), "r")
+            f = open(os.path.join(FNAMES.resource_path("Ortho4XP.cfg")), "r")
         except:
             return 0
         for line in f.readlines():
@@ -1070,8 +1078,8 @@ class Ortho4XP_Config(tk.Toplevel):
         return
 
     def write_global_cfg(self):
-        old_cfg = os.path.join(FNAMES.Ortho4XP_dir, "Ortho4XP.cfg.bak")
-        new_cfg = os.path.join(FNAMES.Ortho4XP_dir, "Ortho4XP.cfg")
+        old_cfg = os.path.join(FNAMES.resource_path("Ortho4XP.cfg.bak"))
+        new_cfg = os.path.join(FNAMES.resource_path("Ortho4XP.cfg"))
         try:
             if (os.path.exists(new_cfg)):
                 os.replace(new_cfg, old_cfg)

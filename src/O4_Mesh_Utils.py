@@ -32,9 +32,9 @@ else:
 
 
 community_server = False
-if os.path.exists(os.path.join(FNAMES.Ortho4XP_dir, "community_server.txt")):
+if os.path.exists(FNAMES.resource_path("community_server.txt")):
     try:
-        f = open(os.path.join(FNAMES.Ortho4XP_dir, "community_server.txt"), "r")
+        f = open(FNAMES.resource_path("community_server.txt"), "r")
         for line in f.readlines():
             line = line.strip()
             if not line:

@@ -1,32 +1,22 @@
 # Ortho4XP
-A scenery generator for the X-Plane flight simulator.
+![example](https://github.com/shred86/Ortho4XP/assets/32663154/f06ebfe5-ba1d-4f05-9439-8e569bd99ef5)
 
-NOTE 15/02/2024 : In transition to version 1.40.
+Ortho4XP is a scenery generation tool for X-Plane. It creates the scenery base mesh and texture layer using external data and orthophoto sources.
 
-Version 1.40 is mostly a compatibility update for XP 12 water requirements.
-Some newer code related to 3D waterbed rendering is included, but one will have
-to wait for XP 12.1 to potentially revise it. The default setting is XP11 (i.e. 
-overlay based ) water rendering + bathymetry for 3D water and physics plane interaction. 
-The new Ortho4XP tiles also automatically bring the seasons, sounds, etc raster from the
-corresponding Global Scenery tiles.
+This is a forked version of [Ortho4XP](https://github.com/oscarpilote/Ortho4XP) developed by [@oscarpilote](https://github.com/oscarpilote) which includes some minor updates, fixes and documentation. The official version is infrequently updated which is the reason I created this forked version to provide quicker updates and documentation. This forked version will incorporate any of the changes made to the official version.
 
-The code as been updated to work with recent versions of the python modules it
-depends on (you may have experienced some deprecation warnings or even some
-code break due to Numpy, Pyproj and Shapely, these should be fixed with this
-update). The only new python module used is skfmm (Fast Marching Method) and is only needed when using 
-the distance_masks_too option, the program will run even without it.
+The specific changes in this forked version:
+* Code changes to enable using [PyInstaller](https://pyinstaller.org/en/stable/) to bundle Ortho4XP and its dependencies into a single package.
+* Add the ability to set an alternate custom_overlay_src directory to resolve an issue for some users. The default X-Plane scenery files are split up between `/X-Plane 12/Global Scenery/X-Plane Global Scenery` and `/X-Plane 12/Global Scenery/X-Plane Demo Areas`. So if you set `custom_overlay_src` to the first directory and try to batch build a bunch of tiles, you might get an error that the .dsf file can't be found if its a location where the .dsf files are located in the second directory.
+* Saves custom_dem and fill_nodata to global configuration.
+* Includes Windows Python dependency wheel files for gdal and scikit-fmm.
+* Update and pin requirements to latest working versions.
+* Adds a bash script to automate the installation process.
 
+## Installation
 
-TODO :
-- Update install instructions (after user first tests). The ones included have
-  not been updated at all, but the same list of decently recent python modules should 
-  work out of the box.
-- Check and update providers status.
-- Compile nvcompress for OSX ARM64 (the included version is the old one renamed without the
-  .app). A Linux version of nvcompress is included now because some distros are apparently 
-  no longer shipping it. Triangle4XP has been updated for all OS, including ARM based Mac.
-  I have not tested anything but Linux software.
-- Incorporate some code changes that were in the old "devel" version (the
-  present is an update from the v130 master branch only).
-- Do something about the 3rd party initiatives to provide some Docker or other 
-  Plug and Play versions.
+For installation instructions, refer to the [Installation page](https://github.com/shred86/Ortho4XP/wiki/Installation) in the [Wiki](https://github.com/shred86/Ortho4XP/wiki).
+
+## Support
+
+Troubleshooting steps for some issues are provided in the [Wiki FAQ](https://github.com/shred86/Ortho4XP/wiki/FAQ). For additional support or questions, refer to the [Ortho4XP forum](https://forums.x-plane.org/index.php?/forums/forum/322-ortho4xp/) at [X-Plane.org](https://forums.x-plane.org).

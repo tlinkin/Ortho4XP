@@ -158,7 +158,6 @@ class Ortho4XP_GUI(tk.Tk):
         # Widgets instances and placement
         # First row (Tile data)
         self.lat = tk.StringVar()
-        self.lat.trace("w", self.tile_change)
         tk.Label(self.frame_tile, text="Latitude:", bg="light green").grid(
             row=0, column=0, padx=5, pady=5, sticky=E + W
         )
@@ -172,7 +171,6 @@ class Ortho4XP_GUI(tk.Tk):
         self.lat_entry.grid(row=0, column=1, padx=5, pady=5, sticky=W)
 
         self.lon = tk.StringVar()
-        self.lon.trace("w", self.tile_change)
         tk.Label(
             self.frame_tile, anchor=W, text="Longitude:", bg="light green"
         ).grid(row=0, column=2, padx=5, pady=5, sticky=E + W)
@@ -186,7 +184,7 @@ class Ortho4XP_GUI(tk.Tk):
         self.lon_entry.grid(row=0, column=3, padx=5, pady=5, sticky=W)
 
         self.default_website = tk.StringVar()
-        self.default_website.trace("w", self.update_cfg)
+        self.default_website.trace_add("write", self.update_cfg)
         tk.Label(
             self.frame_tile, anchor=W, text="Imagery:", bg="light green"
         ).grid(row=0, column=4, padx=5, pady=5, sticky=E + W)
@@ -201,7 +199,7 @@ class Ortho4XP_GUI(tk.Tk):
         self.img_combo.grid(row=0, column=5, padx=5, pady=5, sticky=W)
 
         self.default_zl = tk.StringVar()
-        self.default_zl.trace("w", self.update_cfg)
+        self.default_zl.trace_add("write", self.update_cfg)
         tk.Label(
             self.frame_tile, anchor=W, text="Zoomlevel:", bg="light green"
         ).grid(row=0, column=6, padx=5, pady=5, sticky=E + W)
@@ -356,9 +354,7 @@ class Ortho4XP_GUI(tk.Tk):
 
         # reinitialization from last visit
         try:
-            f = open(
-                os.path.join(FNAMES.Ortho4XP_dir, ".last_gui_params.txt"), "r"
-            )
+            f = open(FNAMES.resource_path(".last_gui_params.txt"), "r")
             (lat, lon, default_website, default_zl) = f.readline().split()
             custom_build_dir = f.readline().strip()
             self.lat.set(lat)
@@ -403,18 +399,6 @@ class Ortho4XP_GUI(tk.Tk):
         except queue.Empty:
             pass
         self.callback_pgrb = self.after(100, self.pgrb_update)
-
-    def tile_change(self, *args):
-        # HACK : user preference is to not trash custom_dem and zone_list on 
-        # tile change. Instead added a new shortcut for trashing all high zl 
-        # list in the custom ZL window at once.
-        return
-        CFG.custom_dem = ""
-        try:
-            self.config_window.v_["custom_dem"].set("")
-        except:
-            pass
-        CFG.zone_list = []
 
     def update_cfg(self, *args):
         if self.default_website.get():
@@ -584,9 +568,7 @@ class Ortho4XP_GUI(tk.Tk):
 
     def exit_prg(self):
         try:
-            f = open(
-                os.path.join(FNAMES.Ortho4XP_dir, ".last_gui_params.txt"), "w"
-            )
+            f = open(FNAMES.resource_path(".last_gui_params.txt"), "w")
             f.write(
                 self.lat.get()
                 + " "

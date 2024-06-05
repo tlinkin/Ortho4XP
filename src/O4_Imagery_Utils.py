@@ -55,14 +55,14 @@ request_headers_generic = {
 
 if "dar" in sys.platform:
     dds_convert_cmd = os.path.join(
-        UI.Ortho4XP_dir, "Utils", "mac", "nvcompress"
+        FNAMES.resource_path("Utils"), "mac", "nvcompress"
     )
     gdal_transl_cmd = "gdal_translate"
     gdalwarp_cmd = "gdalwarp"
     devnull_rdir = " >/dev/null 2>&1"
 elif "win" in sys.platform:
     dds_convert_cmd = os.path.join(
-        UI.Ortho4XP_dir, "Utils", "win", "nvcompress", "nvcompress.exe"
+        FNAMES.resource_path("Utils"), "win", "nvcompress", "nvcompress.exe"
     )
     gdal_transl_cmd = "gdal_translate.exe"
     gdalwarp_cmd = "gdalwarp.exe"
@@ -70,7 +70,7 @@ elif "win" in sys.platform:
 else:
     #dds_convert_cmd = "nvcompress"
     dds_convert_cmd = os.path.join(
-        UI.Ortho4XP_dir, "Utils", "lin", "nvcompress"
+        FNAMES.resource_path("Utils"), "lin", "nvcompress"
         )
     gdal_transl_cmd = "gdal_translate"
     gdalwarp_cmd = "gdalwarp"
@@ -2306,9 +2306,7 @@ def convert_texture(
             except:
                 pass
         png_file_name = out_file_name.replace("tif", "png")
-        tmp_tif_file_name = os.path.join(
-            UI.Ortho4XP_dir, "tmp", out_file_name.replace("4326", "3857")
-        )
+        tmp_tif_file_name = UI.resource_path("tmp", out_file_name.replace("4326", "3857"))
     UI.vprint(
         1, "   Converting orthophoto(s) to build texture " + out_file_name + "."
     )
@@ -2389,7 +2387,7 @@ def convert_texture(
                 except:
                     pass
             dxt5 = True
-        file_to_convert = os.path.join(UI.Ortho4XP_dir, "tmp", png_file_name)
+        file_to_convert = os.path.join(FNAMES.resource_path("tmp"), png_file_name)
         erase_tmp_png = True
         big_image.save(file_to_convert)
         # If one wanted to distribute jpegs instead of dds, uncomment the
@@ -2425,7 +2423,7 @@ def convert_texture(
                 except:
                     pass
             dxt5 = True
-        file_to_convert = os.path.join(UI.Ortho4XP_dir, "tmp", png_file_name)
+        file_to_convert = os.path.join(FNAMES.resource_path("tmp"), png_file_name)
         erase_tmp_png = True
         big_image.save(file_to_convert)
     # finally if nothing needs to be done prior to the conversion
@@ -2503,7 +2501,7 @@ def convert_texture(
                 )
                 try:
                     os.remove(
-                        os.path.join(UI.Ortho4XP_dir, "tmp", png_file_name)
+                        os.path.join(FNAMES.resource_path("tmp"), png_file_name)
                     )
                 except:
                     pass
@@ -2548,12 +2546,12 @@ def convert_texture(
         time.sleep(1)
     if erase_tmp_png:
         try:
-            os.remove(os.path.join(UI.Ortho4XP_dir, "tmp", png_file_name))
+            os.remove(os.path.join(FNAMES.resource_path("tmp"), png_file_name))
         except:
             pass
     if erase_tmp_tif:
         try:
-            os.remove(os.path.join(UI.Ortho4XP_dir, "tmp", png_file_name))
+            os.remove(os.path.join(FNAMES.resource_path("tmp"), png_file_name))
         except:
             pass
     return
