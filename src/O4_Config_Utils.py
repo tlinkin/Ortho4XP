@@ -457,7 +457,7 @@ for var in cfg_vars:
 ################################################################################
 # Update from Global Ortho4XP.cfg
 try:
-    f = open(os.path.join(FNAMES.Ortho4XP_dir, "Ortho4XP.cfg"), "r")
+    f = open(os.path.join(FNAMES.resource_path("Ortho4XP.cfg")), "r")
     for line in f.readlines():
         line = line.strip()
         if not line:
@@ -1055,7 +1055,7 @@ class Ortho4XP_Config(tk.Toplevel):
 
     def load_global_cfg(self):
         try:
-            f = open(os.path.join(FNAMES.Ortho4XP_dir, "Ortho4XP.cfg"), "r")
+            f = open(os.path.join(FNAMES.resource_path("Ortho4XP.cfg")), "r")
         except:
             return 0
         for line in f.readlines():
@@ -1078,8 +1078,8 @@ class Ortho4XP_Config(tk.Toplevel):
         return
 
     def write_global_cfg(self):
-        old_cfg = os.path.join(FNAMES.Ortho4XP_dir, "Ortho4XP.cfg.bak")
-        new_cfg = os.path.join(FNAMES.Ortho4XP_dir, "Ortho4XP.cfg")
+        old_cfg = os.path.join(FNAMES.resource_path("Ortho4XP.cfg.bak"))
+        new_cfg = os.path.join(FNAMES.resource_path("Ortho4XP.cfg"))
         try:
             if (os.path.exists(new_cfg)):
                 os.replace(new_cfg, old_cfg)

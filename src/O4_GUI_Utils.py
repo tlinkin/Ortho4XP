@@ -354,9 +354,7 @@ class Ortho4XP_GUI(tk.Tk):
 
         # reinitialization from last visit
         try:
-            f = open(
-                os.path.join(FNAMES.Ortho4XP_dir, ".last_gui_params.txt"), "r"
-            )
+            f = open(FNAMES.resource_path(".last_gui_params.txt"), "r")
             (lat, lon, default_website, default_zl) = f.readline().split()
             custom_build_dir = f.readline().strip()
             self.lat.set(lat)
@@ -570,9 +568,7 @@ class Ortho4XP_GUI(tk.Tk):
 
     def exit_prg(self):
         try:
-            f = open(
-                os.path.join(FNAMES.Ortho4XP_dir, ".last_gui_params.txt"), "w"
-            )
+            f = open(FNAMES.resource_path(".last_gui_params.txt"), "w")
             f.write(
                 self.lat.get()
                 + " "
