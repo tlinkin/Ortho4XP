@@ -2306,7 +2306,8 @@ def convert_texture(
             except:
                 pass
         png_file_name = out_file_name.replace("tif", "png")
-        tmp_tif_file_name = UI.resource_path("tmp", out_file_name.replace("4326", "3857"))
+        tmp_tif_file_name = os.path.join(
+            FNAMES.resource_path("tmp"), out_file_name.replace("4326", "3857"))
     UI.vprint(
         1, "   Converting orthophoto(s) to build texture " + out_file_name + "."
     )

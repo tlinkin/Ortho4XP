@@ -11,7 +11,7 @@ The specific changes in this forked version:
 * Saves custom_dem and fill_nodata to global configuration.
 * Includes Windows Python dependency wheel files for gdal and scikit-fmm.
 * Update and pin requirements to latest working versions.
-* Adds a bash script to automate the installation process.
+* Adds a bash script to automate the setup process for those that prefer not to use the packaged version.
 
 ## Installation
 
