@@ -10,11 +10,10 @@ g2xpl_16_suffix = ""
 def resource_path(relative_path):
     """Get absolute path to resource."""
     # Required for using pyinstaller
-    if getattr(sys, "frozen", False):
-        base_path = sys._MEIPASS
+    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+        base_path = sys._MEIPASS + "/Ortho4XP_Data/"
     else:
         base_path = os.path.abspath(".")
-
     return os.path.join(base_path, relative_path)
 
 Preview_dir = resource_path("Previews")
