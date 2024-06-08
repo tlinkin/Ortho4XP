@@ -9,7 +9,7 @@ The specific changes in this forked version:
 * Code changes to enable using [PyInstaller](https://pyinstaller.org/en/stable/) to bundle Ortho4XP and its dependencies into a single package.
 * Add the ability to set an alternate `custom_overlay_src` directory to resolve an issue for some users. The default X-Plane scenery files are split up between `/X-Plane 12/Global Scenery/X-Plane Global Scenery` and `/X-Plane 12/Global Scenery/X-Plane Demo Areas`. So if you set `custom_overlay_src` to the first directory and try to batch build a bunch of tiles, you might get an error that the .dsf file can't be found if its a location where the .dsf files are located in the second directory.
 * Saves custom_dem and fill_nodata to global configuration.
-* Display asterik next to zoom level number in the Tiles and configuration window if custom zoom levels have been specified for a tile.
+* Display asterisk next to each tile zoom level number in the Tiles and configuration window if custom zoom levels have been specified.
 * Includes Windows Python dependency wheel files for gdal and scikit-fmm.
 * Update and pin requirements to latest working versions.
 * Adds a bash script to automate the setup process for those that prefer not to use the packaged version.
