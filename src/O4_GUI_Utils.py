@@ -1460,11 +1460,14 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
                                 found_config = False
                         if found_config:
                             prov = zl = ""
+                            zone_list_exists = False
                             for line in tmpf.readlines():
                                 if line[:15] == "default_website":
                                     prov = line.strip().split("=")[1][:4]
                                 elif line[:10] == "default_zl":
                                     zl = int(line.strip().split("=")[1])
+                                elif line[:9] == "zone_list" and len(line[10:]) > 3:
+                                    zone_list_exists = True
                                     break
                             tmpf.close()
                             if not prov:
@@ -1473,6 +1476,8 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
                                 color = dico_color[zl]
                             else:
                                 zl = "?"
+                            if zone_list_exists:
+                                zl = str(zl) + "*"
                             content = prov + "\n" + str(zl)
                         else:
                             content = "?"
