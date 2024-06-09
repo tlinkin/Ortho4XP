@@ -5,4 +5,5 @@ requests==2.32.3
 Rtree==1.2.0
 shapely==2.0.4
 scikit-fmm==2024.5.29
-gdal==3.9.0
+gdal==3.9.0; platform_system == 'Darwin'
+gdal==3.8.4; platform_system == 'Windows'

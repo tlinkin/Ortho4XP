@@ -19,7 +19,7 @@ pip install Utils\win\scikit_fmm-2024.5.29-cp312-cp312-win_amd64.whl
 echo:
 
 echo Installing remaining Python dependencies
-pip install -r requirements_win.txt
+pip install -r requirements.txt
 echo:
 
 echo Ortho4XP setup complete!
