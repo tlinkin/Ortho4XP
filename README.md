@@ -12,6 +12,7 @@ The specific changes in this forked version:
 * Display asterisk next to each tile zoom level number in the Tiles and configuration window if custom zoom levels have been specified.
 * If one-click symlink feature is used, added removal of symlink when "Erase cached data" "Tile (whole)" option is used.
 * Add console feedback when using "Erase cached data" options.
+* Fix zones being saved to tile configuration that were outside of the tile location.
 * Fix minor code typos as they are identified.
 * Includes Windows Python dependency wheel files for gdal and scikit-fmm.
 * Update and pin requirements to latest working versions.
