@@ -7,3 +7,4 @@ shapely==2.0.4
 scikit-fmm==2024.5.29
 gdal==3.9.0; platform_system == 'Darwin'
 gdal==3.8.4; platform_system == 'Windows'
+gdal==3.9.0; platform_system == 'Linux'
