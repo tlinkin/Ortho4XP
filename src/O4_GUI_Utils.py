@@ -1724,27 +1724,25 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
         if self.v_["OSM data"].get():
             try:
                 shutil.rmtree(FNAMES.osm_dir(self.active_lat, self.active_lon))
-            except Exception as e:
-                UI.vprint(3, e)
-            finally:
                 UI.vprint(
-                    0,
+                    1,
                     "OSM data removed for tile at "
                     + str(self.active_lat)
                     + str(self.active_lon),
                 )
+            except Exception as e:
+                UI.vprint(3, e)
         if self.v_["Mask data"].get():
             try:
                 shutil.rmtree(FNAMES.mask_dir(self.active_lat, self.active_lon))
-            except Exception as e:
-                UI.vprint(3, e)
-            finally:
                 UI.vprint(
-                    0,
+                    1,
                     "Mask data removed for tile at "
                     + str(self.active_lat)
                     + str(self.active_lon),
                 )
+            except Exception as e:
+                UI.vprint(3, e)
         if self.v_["Jpeg imagery"].get():
             try:
                 shutil.rmtree(
@@ -1753,15 +1751,14 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
                         FNAMES.long_latlon(self.active_lat, self.active_lon),
                     )
                 )
-            except Exception as e:
-                UI.vprint(3, e)
-            finally:
                 UI.vprint(
-                    0,
+                    1,
                     "Jpeg imagery removed for tile at "
                     + str(self.active_lat)
                     + str(self.active_lon),
                 )
+            except Exception as e:
+                UI.vprint(3, e)
         if self.v_["Tile (whole)"].get() and not self.grouped:
             try:
                 self.remove_symlink(self.active_lat, self.active_lon)
@@ -1770,15 +1767,14 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
                         self.active_lat, self.active_lon, self.custom_build_dir
                     )
                 )
-            except Exception as e:
-                UI.vprint(3, e)
-            finally:
                 UI.vprint(
-                    0,
+                    1,
                     "Tile (whole) removed for tile at "
                     + str(self.active_lat)
                     + str(self.active_lon),
                 )
+            except Exception as e:
+                UI.vprint(3, e)
             if (self.active_lat, self.active_lon) in self.dico_tiles_done:
                 for objid in self.dico_tiles_done[(self.active_lat, self.active_lon)][:2]:
                     self.canvas.delete(objid)
@@ -1795,15 +1791,14 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
                         "textures",
                     )
                 )
-            except Exception as e:
-                UI.vprint(3, e)
-            finally:
                 UI.vprint(
-                    0,
+                    1,
                     "Tile (textures) removed for tile at "
                     + str(self.active_lat)
                     + str(self.active_lon),
                 )
+            except Exception as e:
+                UI.vprint(3, e)
         return
 
     def select_tile(self, event):
