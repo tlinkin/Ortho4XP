@@ -1283,7 +1283,7 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
             ).grid(row=row, column=0, padx=5, pady=5, sticky=N + S + E + W)
             row += 1
         ttk.Button(
-            self.frame_left, text="  Delete    ", command=self.trash
+            self.frame_left, text="  Batch Delete    ", command=self.trash
         ).grid(row=row, column=0, padx=5, pady=5, sticky=N + S + E + W)
         row += 1
         # Batch build
@@ -1311,6 +1311,16 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
             self.frame_left, text="  Batch Build   ", command=self.batch_build
         ).grid(row=row, column=0, padx=5, pady=5, sticky=N + S + E + W)
         row += 1
+        ttk.Separator(self.frame_left, orient=HORIZONTAL).grid(row=row, column=0, padx=5, pady=5, sticky=N + S + E + W)
+        row +=1
+        tk.Label(
+            self.frame_left,
+            text="Shortcuts :\n-----------------\nB2-press+hold=move map\n" + \
+                 "B1-double-click=select active\n" + \
+                 "Shift+B1=select multiple tiles\nCtrl+B1=link in Custom Scenery",
+            bg="light green",
+        ).grid(row=row, column=0, padx=0, pady=5, sticky=N + S + E + W)
+        row += 1
         # Refresh window
         ttk.Button(
             self.frame_left, text="    Refresh     ", command=self.refresh
@@ -1320,14 +1330,6 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
         ttk.Button(
             self.frame_left, text="      Exit      ", command=self.exit
         ).grid(row=row, column=0, padx=5, pady=5, sticky=N + S + E + W)
-        row += 1
-        tk.Label(
-            self.frame_left,
-            text="Shortcuts :\n-----------------\nB2-press+hold=move map\n" + \
-                 "B1-double-click=select active\n" + \
-                 "Shift+B1=add to batch build\nCtrl+B1=link in Custom Scenery",
-            bg="light green",
-        ).grid(row=row, column=0, padx=0, pady=5, sticky=N + S + E + W)
         row += 1
 
         self.canvas = tk.Canvas(self.frame_right, bd=0)
@@ -1720,88 +1722,135 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
         return
 
     def trash(self) -> None:
-        """Delete data for selected/active tile."""
-        if self.v_["OSM data"].get():
-            try:
-                shutil.rmtree(FNAMES.osm_dir(self.active_lat, self.active_lon))
-                UI.vprint(
-                    1,
-                    "OSM data removed for tile at "
-                    + str(self.active_lat)
-                    + str(self.active_lon),
-                )
-            except Exception as e:
-                UI.vprint(3, e)
-        if self.v_["Mask data"].get():
-            try:
-                shutil.rmtree(FNAMES.mask_dir(self.active_lat, self.active_lon))
-                UI.vprint(
-                    1,
-                    "Mask data removed for tile at "
-                    + str(self.active_lat)
-                    + str(self.active_lon),
-                )
-            except Exception as e:
-                UI.vprint(3, e)
-        if self.v_["Jpeg imagery"].get():
-            try:
-                shutil.rmtree(
-                    os.path.join(
-                        FNAMES.Imagery_dir,
-                        FNAMES.long_latlon(self.active_lat, self.active_lon),
-                    )
-                )
-                UI.vprint(
-                    1,
-                    "Jpeg imagery removed for tile at "
-                    + str(self.active_lat)
-                    + str(self.active_lon),
-                )
-            except Exception as e:
-                UI.vprint(3, e)
-        if self.v_["Tile (whole)"].get() and not self.grouped:
-            try:
-                self.remove_symlink(self.active_lat, self.active_lon)
-                shutil.rmtree(
-                    FNAMES.build_dir(
-                        self.active_lat, self.active_lon, self.custom_build_dir
-                    )
-                )
-                UI.vprint(
-                    1,
-                    "Tile (whole) removed for tile at "
-                    + str(self.active_lat)
-                    + str(self.active_lon),
-                )
-            except Exception as e:
-                UI.vprint(3, e)
-            if (self.active_lat, self.active_lon) in self.dico_tiles_done:
-                for objid in self.dico_tiles_done[(self.active_lat, self.active_lon)][:2]:
-                    self.canvas.delete(objid)
-                del self.dico_tiles_done[(self.active_lat, self.active_lon)]
-        if self.v_["Tile (textures)"].get() and not self.grouped:
-            try:
-                shutil.rmtree(
-                    os.path.join(
-                        FNAMES.build_dir(
-                            self.active_lat,
-                            self.active_lon,
-                            self.custom_build_dir,
-                        ),
-                        "textures",
-                    )
-                )
-                UI.vprint(
-                    1,
-                    "Tile (textures) removed for tile at "
-                    + str(self.active_lat)
-                    + str(self.active_lon),
-                )
-            except Exception as e:
-                UI.vprint(3, e)
+        """Delete cached data for selected tiles."""
+        if not self.dico_tiles_todo:
+            UI.vprint(1, "Unable to erase cached data: No tiles selected.")
+            return
+        list_lat_lon = sorted(self.dico_tiles_todo.keys())
+        data_deleted = False
+        for lat, lon in list_lat_lon:
+            if self.v_["OSM data"].get():
+                data_deleted = self.delete_osm_data(lat, lon)
+            if self.v_["Mask data"].get():
+                data_deleted = self.delete_mask_data(lat, lon)
+            if self.v_["Jpeg imagery"].get():
+                data_deleted = self.delete_jpeg_imagery(lat, lon)
+            if self.v_["Tile (whole)"].get() and not self.grouped:
+                data_deleted = self.delete_tile_whole(lat, lon)
+            if self.v_["Tile (textures)"].get() and not self.grouped:
+                data_deleted = self.delete_tile_textures(lat, lon)
+        if data_deleted:
+            UI.vprint(1, "Selected cached data removed.")
+        else:
+            UI.vprint(1, "No cached data found.")
         return
 
+    def delete_osm_data(self, lat: int, lon: int) -> None:
+        """Delete cached OSM data."""
+        try:
+            shutil.rmtree(FNAMES.osm_dir(lat, lon))
+            UI.vprint(
+                3,
+                "OSM data removed for tile at " + str(lat) + str(lon),
+            )
+            return True
+        except FileNotFoundError:
+            UI.vprint(
+                3,
+                "No OSM data exists for tile at " + str(lat) + str(lon),
+            )
+        except Exception as e:
+            UI.vprint(3, e)
+
+    def delete_mask_data(self, lat: int, lon: int) -> None:
+        """Delete cached mask data."""
+        try:
+            shutil.rmtree(FNAMES.mask_dir(lat, lon))
+            UI.vprint(
+                3,
+                "Mask data removed for tile at " + str(lat) + str(lon),
+            )
+            return True
+        except FileNotFoundError:
+            UI.vprint(
+                3,
+                "No mask data exists for tile at " + str(lat) + str(lon),
+            )
+        except Exception as e:
+            UI.vprint(3, e)
+
+    def delete_jpeg_imagery(self, lat: int, lon: int) -> None:
+        """Delete ortho JPEG immagery."""
+        try:
+            shutil.rmtree(
+                os.path.join(
+                    FNAMES.Imagery_dir,
+                    FNAMES.long_latlon(lat, lon),
+                )
+            )
+            UI.vprint(
+                3,
+                "Jpeg imagery removed for tile at " + str(lat) + str(lon),
+            )
+            return True
+        except FileNotFoundError:
+            UI.vprint(
+                3,
+                "No jpeg imagery exists for tile at " + str(lat) + str(lon),
+            )
+        except Exception as e:
+            UI.vprint(3, e)
+
+    def delete_tile_whole(self, lat: int, lon: int) -> None:
+        """Delete all tile data."""
+        try:
+            self.remove_symlink(lat, lon)
+            shutil.rmtree(FNAMES.build_dir(lat, lon, self.custom_build_dir))
+            UI.vprint(
+                3,
+                "Tile (whole) removed for tile at " + str(lat) + str(lon),
+            )
+            if (lat, lon) in self.dico_tiles_done:
+                for objid in self.dico_tiles_done[(lat, lon)][:2]:
+                    self.canvas.delete(objid)
+                del self.dico_tiles_done[(lat, lon)]
+            return True
+        except FileNotFoundError:
+            UI.vprint(
+                3,
+                "No tile data exists for tile at " + str(lat) + str(lon),
+            )
+        except Exception as e:
+            UI.vprint(3, e)
+
+    def delete_tile_textures(self, lat: int, lon: int) -> None:
+        """Delete tile textures."""
+        try:
+            shutil.rmtree(
+                os.path.join(
+                    FNAMES.build_dir(
+                        lat,
+                        lon,
+                        self.custom_build_dir,
+                    ),
+                    "textures",
+                )
+            )
+            UI.vprint(
+                3,
+                "Tile (textures) removed for tile at " + str(lat) + str(lon),
+            )
+            return True
+        except FileNotFoundError:
+            UI.vprint(
+                3,
+                "No tile textures exists for tile at " + str(lat) + str(lon),
+            )
+        except Exception as e:
+            UI.vprint(3, e)
+
     def select_tile(self, event):
+        """Set active tile."""
         x = self.canvas.canvasx(event.x)
         y = self.canvas.canvasy(event.y)
         (lat, lon) = [floor(t) for t in GEO.pix_to_wgs84(x, y, self.earthzl)]
@@ -1856,6 +1905,7 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
     def batch_build(self):
         list_lat_lon = sorted(self.dico_tiles_todo.keys())
         if not list_lat_lon:
+            UI.vprint(1, "Unable to batch build: No tiles selected.")
             return
         (lat, lon) = list_lat_lon[0]
         try:
