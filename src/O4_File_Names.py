@@ -11,7 +11,7 @@ def resource_path(relative_path):
     """Get absolute path to resource."""
     # Required for using pyinstaller
     if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-        base_path = sys._MEIPASS + "/Ortho4XP_Data/"
+        base_path = os.path.join(sys._MEIPASS, 'Ortho4XP_Data')
     else:
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
