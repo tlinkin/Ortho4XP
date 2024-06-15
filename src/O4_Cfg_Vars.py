@@ -53,7 +53,7 @@ cfg_app_vars = {
     },
     "http_timeout": {
         "module": "IMG",
-        "type": float,
+        "type": int,
         "default": 10,
         "hint": "Delay before we decide that a http request is timed out.",
     },
@@ -121,7 +121,7 @@ cfg_tile_vars = {
     "lane_width": {
         "type": float,
         "default": 4,
-        "hint": "With (in meters) to be used for buffering that part of the road network that requires levelling.",
+        "hint": "Width (in meters) to be used for buffering that part of the road network that requires leveling.",
     },
     "max_levelled_segs": {
         "type": int,
@@ -157,7 +157,7 @@ cfg_tile_vars = {
     # Mesh
     "curvature_tol": {
         "type": float,
-        "default": 2,
+        "default": 2.0,
         "hint": "This parameter is intrinsically linked the mesh final density. Mesh refinement is mostly based on curvature computations on the elevation data (the exact decision rule can be found in _ triunsuitable() _ in Utils/Triangle4XP.c). A higher curvature tolerance yields fewer triangles.",
     },
     "apt_curv_tol": {
@@ -172,7 +172,7 @@ cfg_tile_vars = {
     },
     "coast_curv_tol": {
         "type": float,
-        "default": 1,
+        "default": 1.0,
         "hint": "If smaller, it supersedes curvature_tol along the coastline.",
     },
     "coast_curv_ext": {
@@ -182,12 +182,12 @@ cfg_tile_vars = {
     },
     "limit_tris": {
         "type": float,
-        "default": 3,
+        "default": 3.0,
         "hint": "If non zero, approx upper bound _in millions_ on the number of final triangles in the mesh. Note: When 0 we impose a hard limit of 5M, to keep X-Plane comfortable. For high resolution DEMS you _should_ use it.",
     },
     "min_angle": {
         "type": float,
-        "default": 10,
+        "default": 10.0,
         "hint": "The mesh algorithm will try to not have mesh triangles with (smallest for water / second smallest for regular land) angle less than the value (in deg) of min_angle.",
     },
     "sea_smoothing_mode": {
@@ -214,7 +214,7 @@ cfg_tile_vars = {
         "hint": "The zoomlevel at which the (sea) water masks are built. Masks are used for alpha channel, and this channel usually requires less resolution than the RGB ones, the reason for this (VRAM saving) parameter. If the coastline and elevation data are very detailed, it might be interesting to lift this parameter up so that the masks can reproduce this complexity.",
     },
     "masks_width": {
-        "type": list,
+        "type": int,
         "default": 100,
         "hint": "Maximum extent of the masks perpendicularly to the coastline (rough definition). NOTE: The value is now in meters, it used to be in ZL14 pixel size in earlier verions, the scale is roughly one to ten between both.",
     },
@@ -262,7 +262,7 @@ cfg_tile_vars = {
     },
     "cover_extent": {
         "type": float,
-        "default": 1,
+        "default": 1.0,
         "hint": "The extent (in km) past the airport boundary taken into account for higher ZL. Note that for VRAM efficiency higher ZL textures are fully used on their whole extent as soon as part of them are needed.",
     },
     "cover_zl": {
@@ -272,7 +272,7 @@ cfg_tile_vars = {
     },
     "sea_texture_blur": {
         "type": float,
-        "default": 0,
+        "default": 0.0,
         "hint": 'For layers of type "mask" in combined providers imageries, determines the extent (in meters) of the blur radius applied. This allows to smoothen some sea imageries where the wave or reflection pattern was too much present.',
     },
     "water_tech": {
@@ -304,7 +304,7 @@ cfg_tile_vars = {
     },
     "normal_map_strength": {
         "type": float,
-        "default": 1,
+        "default": 1.0,
         "hint": 'Orthophotos by essence already contain the part of the shading burned in (here by shading we mean the amount of reflected light in the camera direction as a function of the terrain slope, not the shadows). This option allows to tweak the normal coordinates of the mesh in the DSF to avoid "overshading", but it has side effects on the way X-Plane computes scenery shadows. Used to be 0.3 by default in earlier versions, the default is now 1 which means exact normals.',
     },
     "terrain_casts_shadows": {
@@ -314,7 +314,7 @@ cfg_tile_vars = {
         "short_name": "terrain_casts_shadow",
     },
     "overlay_lod": {
-        "type": float,
+        "type": int,
         "default": 25000,
         "hint": "Distance until which overlay imageries (that is orthophotos over water) are drawn. Lower distances have a positive impact on frame rate and VRAM usage, and IFR flyers will probably need a higher value than VFR ones.",
     },
@@ -337,6 +337,12 @@ cfg_tile_vars = {
 }
 
 cfg_vars = {**cfg_app_vars, **cfg_tile_vars}
+
+cfg_global_tile_vars = {
+    key: value
+    for key, value in cfg_vars.items()
+    if key not in ["default_website", "default_zl", "zone_list"]
+}
 
 list_app_vars = [
     "verbosity",
@@ -419,11 +425,7 @@ list_tile_vars = (
 )
 
 list_global_tile_vars = (
-    list_vector_vars
-    + list_mesh_vars
-    + list_mask_vars
-    + list_dsf_vars
-    + list_other_vars
+    list_vector_vars + list_mesh_vars + list_mask_vars + list_dsf_vars + list_other_vars
 )
 
 list_global_cfg = (

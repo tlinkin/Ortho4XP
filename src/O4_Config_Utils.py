@@ -8,6 +8,7 @@ import tkinter.ttk as ttk
 from tkinter import RIDGE, N, S, E, W, filedialog, messagebox
 from O4_Cfg_Vars import (
     cfg_app_vars,
+    cfg_global_tile_vars,
     cfg_tile_vars,
     cfg_vars,
     gui_app_vars_short,
@@ -53,7 +54,9 @@ for var in cfg_vars:
         else var
     )
     exec(target + "=cfg_vars['" + var + "']['default']")
-    # Set global_cfg to defaults as well but using just the key from cfg_var
+
+# Initialize the global_cfg dictionary with default values
+for var in cfg_global_tile_vars:
     global_cfg[var] = cfg_vars[var]["default"]
 
 ################################################################################
@@ -81,14 +84,15 @@ try:
             if cfg_vars[var]["type"] in (bool, list):
                 cmd = target + "=" + value
                 # Update global_cfg values
-                global_cfg[var] = value
+                global_cfg[var] = eval(value)
             else:
                 cmd = target + "=cfg_vars['" + var + "']['type'](value)"
                 # Update remaining global_cfg values
                 global_cfg[var] = cfg_vars[var]["type"](value)
             exec(cmd)
-        except:
+        except Exception as e:
             UI.lvprint(1, "Global config file contains an invalid line:", line)
+            _LOGGER.error(e)
             pass
     f.close()
 except:
@@ -798,10 +802,11 @@ class Ortho4XP_Config(tk.Toplevel):
             target = (
                 cfg_vars[var]["module"] + "." + var
                 if "module" in cfg_vars[var]
-                else var
+                else "globals()['" + var + "']"
             )
             # Set tile and app config tab values from global variables
             self.v_[var].set(str(eval(target)))
+        for var in cfg_global_tile_vars:
             # Set global config tab values from global_cfg dictionary
             self.v2_[var].set(str(global_cfg[var]))
 
@@ -814,6 +819,12 @@ class Ortho4XP_Config(tk.Toplevel):
         response = messagebox.askyesno("Confirmation", "Save tile zones?")
         for var in list_tile_vars:
             if response and var == "zone_list":
+                continue
+            # zone_list isn't currently in the global config file, hence not in global_cfg
+            # so even if we don't use messagebox, need to make sure we don't add zone_list to self.v_
+            if not response and var == "zone_list":
+                _zone_list = []
+                self.v_[var].set(str(_zone_list))
                 continue
             self.v_[var].set(str(global_cfg[var]))
 
@@ -937,9 +948,9 @@ class Ortho4XP_Config(tk.Toplevel):
     def reset_global_cfg(self) -> None:
         """Reset global tile settings to defaults."""
         # This does not reset the default_website and default_zl
-        for var in cfg_tile_vars:
+        for var in cfg_global_tile_vars:
             # Update GUI Tkinter objects
-            self.v2_[var].set(str(cfg_tile_vars[var]["default"]))
+            self.v2_[var].set(str(cfg_global_tile_vars[var]["default"]))
 
         UI.vprint(1, "Global tile settings reset to defaults.")
 
@@ -947,7 +958,7 @@ class Ortho4XP_Config(tk.Toplevel):
         """Write global configuration settings to Ortho4XP.cfg."""
         # Apply changes first to update global_cfg dictionary
         self.apply_changes("global")
-
+        # TODO: It's saving zone_list, default_website, default_zl which shouldn't be happening
         config_file = {}
         try:
             if (os.path.exists(global_cfg_file)):
@@ -987,25 +998,27 @@ class Ortho4XP_Config(tk.Toplevel):
         current_config = {}
         config_file = {}
 
+        # Get current app settings and add to dict
+        for var in list_app_vars:
+            current_config[var] = self.v_[var].get()
+
         try:
             if (os.path.exists(global_cfg_file)):
                 # Make a backup of the existing global config file
                 os.replace(global_cfg_file, global_cfg_bak_file)
-                # Get current app settings and add to dict
-                for var in list_app_vars:
-                    current_config[var] = self.v_[var].get()
+
                 # Get settings in existing config file returned as a dict
                 config_file = self.cfg_to_dict(global_cfg_bak_file)
+
                 # Update existing file with current app settings
                 config_file.update(current_config)
+
                 # Write to new configuration file
                 self.dict_to_cfg(global_cfg_file, config_file)
-            else:
-                with open(global_cfg_file, "w") as file:
-                    for var in list_app_vars:
-                        file.write(var + "=" + self.v_[var].get() + "\n")
 
-                    self.v_[var].set(str(eval(target)))
+            else:
+                self.dict_to_cfg(global_cfg_file, current_config)
+
             UI.vprint(1, "Application configuration settings saved.")
         except Exception as e:
             UI.lvprint(1, "Could not write application settings to global config.")
@@ -1096,13 +1109,24 @@ class Ortho4XP_Config(tk.Toplevel):
                 self.popup("ERROR", error_text)
 
     def dict_to_cfg(self, file:str, cfg_dict: dict) -> None:
-        """Convert dictionary to key=value format and write to file."""
+        """
+        Convert dictionary to key=value format and write to file.
+
+        :param str file: path to config file
+        :param dict cfg_dict: dictionary to write to file
+        :return: None
+        """
         with open(file, 'w') as file:
             for key, value in cfg_dict.items():
                 file.write(f"{key}={value}\n")
 
     def cfg_to_dict(self, file: str) -> dict:
-        """Read config file and return as a dictionary."""
+        """
+        Read config file and return as a dictionary.
+
+        :param str file: path to config file
+        :return: dict
+        """
         config_dict = {}
         with open(file, 'r') as file:
             for line in file:
