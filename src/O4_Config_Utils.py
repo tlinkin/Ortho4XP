@@ -1217,14 +1217,23 @@ class Ortho4XP_Config(tk.Toplevel):
         if tmp:
             self.v_[item].set(str(tmp))
 
-    def popup(self, header, input_text):
+    def popup(self, header: str, input_text: str) -> None:
+        """
+        Popup window for hints.
+        
+        :param str header: top line of the body of the popup window
+        :param str input_text: body of the popup window
+        :return: None
+        """
         self.popupwindow = tk.Toplevel()
         self.popupwindow.wm_title("Hint!")
+        self.popupwindow.configure(background="light gray")
+
         ttk.Label(
-            self.popupwindow, text=header + " :", anchor=W, font="TkBoldFont"
+            self.popupwindow, text=header, anchor=W, font=("TkBoldFont", 14), background="light gray"
         ).pack(side="top", fill="x", padx=5, pady=3)
         ttk.Label(
-            self.popupwindow, text=input_text, wraplength=600, anchor=W
+            self.popupwindow, text=input_text, wraplength=600, anchor=W, background="light gray"
         ).pack(side="top", fill="x", padx=5, pady=0)
         ttk.Button(
             self.popupwindow, text="Ok", command=self.popupwindow.destroy
