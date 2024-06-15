@@ -5,7 +5,7 @@ import os
 from math import ceil
 import tkinter as tk
 import tkinter.ttk as ttk
-from tkinter import RIDGE, N, S, E, W, filedialog
+from tkinter import RIDGE, N, S, E, W, filedialog, messagebox
 from O4_Cfg_Vars import (
     cfg_app_vars,
     cfg_tile_vars,
@@ -278,7 +278,6 @@ class Ortho4XP_Config(tk.Toplevel):
         self.tile_config(self.tile_config_frame)
         self.global_config(self.global_config_frame)
         self.app_config(self.app_config_frame)
-
 
     def tile_config(self, frame: tk.Frame) -> None:
         """Tile configuration section."""
@@ -654,7 +653,6 @@ class Ortho4XP_Config(tk.Toplevel):
             row=0, column=5, padx=5, pady=self.pady, sticky=N + S + E + W
         )
 
-
     def app_config(self, frame: tk.Frame) -> None:
         """Application configuration frame."""
         frame.rowconfigure(0, weight=1)
@@ -809,9 +807,30 @@ class Ortho4XP_Config(tk.Toplevel):
 
     def reset_tile_cfg(self) -> None:
         """Reset tile settings to global tile settings."""
+        try:
+            (lat, lon) = self.parent.get_lat_lon()
+        except:
+            return 0
+        response = messagebox.askyesno("Confirmation", "Save tile zones?")
         for var in list_tile_vars:
-            # Update GUI Tkinter objects
-            self.v_[var].set(global_cfg[var])
+            if response and var == "zone_list":
+                continue
+            self.v_[var].set(str(global_cfg[var]))
+
+        # Remove the current tile zones from global zone_list
+        if not response:
+            tile_zones = []
+            # Find all the zones for the active tile
+            for zone in globals()["zone_list"]:
+                _zone_list = [int(coord) for coord in zone[0]]
+                _zone_list = set(_zone_list)
+                if lat in _zone_list and lon+1 in _zone_list:
+                    tile_zones.append(zone)
+            # Only remove the active tiles from the global zone_list
+            globals()["zone_list"] = [
+                zone for zone in globals()["zone_list"] if zone not in tile_zones
+            ]
+
         UI.vprint(1, "Tile settings reset to global tile settings.")
 
     def load_tile_cfg(self) -> None:
@@ -864,13 +883,13 @@ class Ortho4XP_Config(tk.Toplevel):
                     pass
         if not self.v_["zone_list"].get():
             self.v_["zone_list"].set(str(zone_list))
+        # Apply changes to update global variables
+        self.apply_changes("tile")
         UI.vprint(0, f"Configuration loaded for tile at {lat} {lon}")
         f.close()
 
-    def write_tile_cfg(self):
+    def write_tile_cfg(self) -> None:
         """Save tile configuration settings for active tile."""
-        # Apply changes first to update global variables
-        self.apply_changes("tile")
         try:
             (lat, lon) = self.parent.get_lat_lon()
         except:
@@ -890,12 +909,17 @@ class Ortho4XP_Config(tk.Toplevel):
         except:
             self.popup("ERROR", "Cannot write into " + str(build_dir))
             return 0
-        
-        self.v_["zone_list"].set(str(eval("zone_list"))) # convert tk.StringVar to str
-        zone_list = eval(self.v_["zone_list"].get()) # convert str to list
-        tile_zones = []
 
-        for zone in zone_list:
+        # Required for when the config window is left open to make sure
+        # we retain any zone modifications
+        self.v_["zone_list"].set(str(eval("zone_list")))
+
+        # Apply changes to update global variables
+        self.apply_changes("tile")
+
+        # Get zones only for the tile
+        tile_zones = []
+        for zone in globals()["zone_list"]:
             _zone_list = [int(coord) for coord in zone[0]]
             _zone_list = set(_zone_list)
             if lat in _zone_list and lon+1 in _zone_list:
@@ -972,9 +996,6 @@ class Ortho4XP_Config(tk.Toplevel):
                     current_config[var] = self.v_[var].get()
                 # Get settings in existing config file returned as a dict
                 config_file = self.cfg_to_dict(global_cfg_bak_file)
-                _LOGGER.info(f"config_file: {config_file}")
-                _LOGGER.info("****")
-                _LOGGER.info(f"global_cfg: {global_cfg}")
                 # Update existing file with current app settings
                 config_file.update(current_config)
                 # Write to new configuration file
@@ -983,7 +1004,7 @@ class Ortho4XP_Config(tk.Toplevel):
                 with open(global_cfg_file, "w") as file:
                     for var in list_app_vars:
                         file.write(var + "=" + self.v_[var].get() + "\n")
-    
+
                     self.v_[var].set(str(eval(target)))
             UI.vprint(1, "Application configuration settings saved.")
         except Exception as e:
@@ -1013,9 +1034,19 @@ class Ortho4XP_Config(tk.Toplevel):
         else: # Tile and app tabs use self.v_ and global variables
             if tab == "tile":
                 list_vars = list_tile_vars
+                # Make sure existing zones in global zone_list are retained
+                # and check for any duplicates before adding new zones
+                for zone in eval(self.v_["zone_list"].get()):
+                    if zone not in globals()["zone_list"]:
+                        globals()["zone_list"].append(zone)
             if tab == "app":
                 list_vars = list_app_vars
             for var in list_vars:
+                # We don't want to update the global zone_list here
+                # since it's already been updated by the save_zone_list in O4_GUI_Utils.py
+                # and also by the code above
+                if var == "zone_list":
+                    continue
                 try:
                     target = (
                         cfg_vars[var]["module"] + "." + var
@@ -1036,6 +1067,7 @@ class Ortho4XP_Config(tk.Toplevel):
                             + "'].get())"
                         )
                     exec(cmd)
+                    # Update the global_cfg dict as well
                     if tab == "app": 
                         global_cfg[var] = value
                 except:

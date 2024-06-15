@@ -23,6 +23,7 @@ from tkinter import (
 )
 import tkinter.ttk as ttk
 from PIL import Image, ImageTk
+from O4_Cfg_Vars import cfg_vars, list_tile_vars
 import O4_Version
 import O4_Imagery_Utils as IMG
 import O4_File_Names as FNAMES
@@ -87,6 +88,7 @@ class Ortho4XP_GUI(tk.Tk):
 
         # Let UI know ourself
         UI.gui = self
+
         # Initialize providers combobox entries
         self.map_list = sorted(
             [
@@ -377,6 +379,8 @@ class Ortho4XP_GUI(tk.Tk):
             self.default_website.set("BI")
             self.default_zl.set(16)
             self.custom_build_dir.set("")
+        # Needed for load_tile_cfg to check if the window is open
+        self.config_window = None
 
     # GUI methods
     def write(self, line):
@@ -410,22 +414,25 @@ class Ortho4XP_GUI(tk.Tk):
 
     def tile_change(self, *args):
         """Load tile configuration on tile change."""
-        # self.load_tile_cfg()
+        # TODO: Implement config loading on tile change here instead of using select_tile
+        # so we can catch if the tile is changed manually or with the mouse in the map view.
+        # Problem is right now this is being called if the lat or lon is changed, and if using
+        # the map, that is true so it gets called twice. Also, having issues with the lat/lon
+        # not being accurate when trying to implement here.
         return
 
-    def load_tile_cfg(self) -> None:
-        """Load tile configuration settings for active tile."""
-        # TODO: This is a work in progress. Right now the issue is self.config_window
-        # isn't initialized until the config window is opened. We could just initialize it
-        # when this module is loaded.
-        zone_list = []
-        try:
-            (lat, lon) = self.get_lat_lon()
-        except:
-            return 0
+    def load_tile_cfg(self, lat: int, lon: int) -> None:
+        """
+        Load tile configuration settings for specified tile.
+        Used for loading a config file when the tile is changed.
+
+        :param int lat: latitude in degrees (e.g., 35)
+        :param int lon: longitude in degrees (e.g., -115)
+        :return: None
+        """
+        # Currently doesn't work if coords changed manually in the GUI.
         custom_build_dir = self.custom_build_dir_entry.get()
         build_dir = FNAMES.build_dir(lat, lon, custom_build_dir)
-
 
         tile_cfg_file = os.path.join(build_dir, "Ortho4XP_" + FNAMES.short_latlon(lat, lon) + ".cfg")
 
@@ -444,7 +451,24 @@ class Ortho4XP_GUI(tk.Tk):
                         value = value[1:]
                     if value and value[-1] in ('"', "'"):
                         value = value[:-1]
-                    self.config_window.v_[var].set(value)
+                    target = (
+                        cfg_vars[var]["module"] + "." + var
+                        if "module" in cfg_vars[var]
+                        else "CFG." + var
+                    )
+                    if cfg_vars[var]["type"] in (bool, list):
+                        cmd = target + "=" + value
+                    else:
+                        cmd = target + "=cfg_vars['" + var + "']['type'](value)"
+
+                    if var == "zone_list":
+                        # Append zones from config to global zone_list but also check if it's a duplicate
+                        for zone in eval(value):
+                            if zone not in CFG.zone_list:
+                                CFG.zone_list.append(zone)
+                        # Stop the loop here since we don't want to override the global zone_list which cmd will do
+                        continue
+                    exec(cmd)
                 except Exception as e:
                     # compatibility with zone_list config files from version <= 1.20
                     if "zone_list.append" in line:
@@ -456,13 +480,30 @@ class Ortho4XP_GUI(tk.Tk):
                     else:
                         UI.vprint(2, e)
                         pass
-            if not self.config_window.v_["zone_list"].get():
-                self.config_window.v_["zone_list"].set(str(zone_list))
-            UI.vprint(0, f"Configuration loaded for tile at {lat} {lon}")
+            UI.vprint(1, f"Configuration loaded for tile at {lat} {lon}")
             f.close()
-
         else:
-            pass # temporary
+            for var in list_tile_vars:
+                # Skip zone_list so we don't overwrite the global zone_list
+                if var == "zone_list":
+                    continue
+                value = str(CFG.global_cfg[var])
+                target = "CFG." + var
+                if cfg_vars[var]["type"] in (bool, list):
+                    cmd = target + "=" + value
+                else:
+                    cmd = target + "=cfg_vars['" + var + "']['type'](value)"
+                exec(cmd)
+        # Update config window values if it's open
+        if self.config_window is not None and self.config_window.winfo_exists():
+            self.load_tiles_config_interface_from_variables()
+
+    def load_tiles_config_interface_from_variables(self) -> None:
+        """Load the configuration interface values for only the tile config tab."""
+        for var in list_tile_vars:
+            target = "CFG." + var
+            # Set tile and app config tab values from global variables
+            self.config_window.v_[var].set(str(eval(target)))
 
     def update_cfg(self, *args):
         if self.default_website.get():
@@ -1948,6 +1989,7 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
         )
         self.parent.lat.set(lat)
         self.parent.lon.set(lon)
+        self.parent.load_tile_cfg(lat, lon)
         return
 
     def toggle_to_custom(self, event: tk.Event) -> None:
