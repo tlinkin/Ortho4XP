@@ -3,6 +3,8 @@
 import O4_OSM_Utils as OSM
 
 
+global_prefix = "global_"
+
 cfg_app_vars = {
     # App
     "verbosity": {
@@ -120,7 +122,7 @@ cfg_tile_vars = {
     },
     "lane_width": {
         "type": float,
-        "default": 4,
+        "default": 4.0,
         "hint": "Width (in meters) to be used for buffering that part of the road network that requires leveling.",
     },
     "max_levelled_segs": {
@@ -130,7 +132,7 @@ cfg_tile_vars = {
     },
     "water_simplification": {
         "type": float,
-        "default": 0,
+        "default": 0.0,
         "hint": "In case the OSM data for water areas would become too large, this parameter (in meter) can be used for node simplification.",
     },
     "min_area": {
@@ -140,7 +142,7 @@ cfg_tile_vars = {
     },
     "max_area": {
         "type": float,
-        "default": 200,
+        "default": 200.0,
         "hint": "Any water patch larger than this quantity (in km^2) will be masked like the sea.",
     },
     "clean_bad_geometries": {
@@ -336,13 +338,14 @@ cfg_tile_vars = {
     },
 }
 
-cfg_vars = {**cfg_app_vars, **cfg_tile_vars}
-
+# Create dictionary from cfg_tile_vars with prefix and remove keys not in global config
 cfg_global_tile_vars = {
-    key: value
-    for key, value in cfg_vars.items()
+    f"{global_prefix}{key}": value
+    for key, value in cfg_tile_vars.items()
     if key not in ["default_website", "default_zl", "zone_list"]
 }
+
+cfg_vars = {**cfg_app_vars, **cfg_tile_vars, **cfg_global_tile_vars}
 
 list_app_vars = [
     "verbosity",
@@ -361,7 +364,9 @@ list_app_vars = [
     "custom_overlay_src",
     "custom_overlay_src_alternate",
 ]
+
 gui_app_vars_short = list_app_vars[:-3]
+
 gui_app_vars_long = list_app_vars[-3:]
 
 list_vector_vars = [
@@ -424,9 +429,24 @@ list_tile_vars = (
     + ["default_website", "default_zl", "zone_list"]
 )
 
-list_global_tile_vars = (
-    list_vector_vars + list_mesh_vars + list_mask_vars + list_dsf_vars + list_other_vars
-)
+list_global_tile_vars = [
+    global_prefix + item
+    for item in (
+        list_vector_vars
+        + list_mesh_vars
+        + list_mask_vars
+        + list_dsf_vars
+        + list_other_vars
+    )
+]
+
+list_global_vector_vars = [global_prefix + item for item in list_vector_vars]
+
+list_global_mesh_vars = [global_prefix + item for item in list_mesh_vars]
+
+list_global_dsf_vars = [global_prefix + item for item in list_dsf_vars]
+
+list_global_mask_vars = [global_prefix + item for item in list_mask_vars]
 
 list_global_cfg = (
     list_app_vars + list_vector_vars + list_mesh_vars + list_mask_vars + list_dsf_vars

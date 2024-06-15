@@ -23,7 +23,14 @@ from tkinter import (
 )
 import tkinter.ttk as ttk
 from PIL import Image, ImageTk
-from O4_Cfg_Vars import cfg_vars, list_tile_vars
+from O4_Cfg_Vars import (
+    cfg_vars,
+    cfg_tile_vars,
+    cfg_global_tile_vars,
+    global_prefix,
+    list_global_tile_vars,
+    list_tile_vars,
+)
 import O4_Version
 import O4_Imagery_Utils as IMG
 import O4_File_Names as FNAMES
@@ -41,7 +48,7 @@ _LOGGER.setLevel(logging.INFO)
 handler = logging.StreamHandler()
 _LOGGER.addHandler(handler)
 
-# Set OsX=True if you prefer the OsX way of drawing existing tiles but 
+# Set OsX=True if you prefer the OsX way of drawing existing tiles but
 # are on Linux or Windows.
 OsX = "dar" in sys.platform
 
@@ -381,6 +388,9 @@ class Ortho4XP_GUI(tk.Tk):
             self.custom_build_dir.set("")
         # Needed for load_tile_cfg to check if the window is open
         self.config_window = None
+        # If the tile doesn't have a config, we do end up loading the global settings
+        # again which is redundant as that's already been done in O4_Config_Utils
+        self.load_tile_cfg(int(self.lat.get()), int(self.lon.get()))
 
     # GUI methods
     def write(self, line):
@@ -483,16 +493,15 @@ class Ortho4XP_GUI(tk.Tk):
             UI.vprint(1, f"Configuration loaded for tile at {lat} {lon}")
             f.close()
         else:
-            for var in list_tile_vars:
-                # Skip zone_list so we don't overwrite the global zone_list
-                if var == "zone_list":
-                    continue
-                value = str(CFG.global_cfg[var])
-                target = "CFG." + var
-                if cfg_vars[var]["type"] in (bool, list):
-                    cmd = target + "=" + value
+            for var in list_global_tile_vars:
+                # Set the value of CFG.* from the value of CFG.global_*
+                _var = "CFG." + var.replace(global_prefix, "")
+                # Get the value of CFG.global_*
+                value = eval("CFG." + var)
+                if cfg_global_tile_vars[var]["type"] in (bool, list):
+                    cmd = _var + "=" + str(value)
                 else:
-                    cmd = target + "=cfg_vars['" + var + "']['type'](value)"
+                    cmd = _var + "=cfg_global_tile_vars['" + var + "']['type'](value)"
                 exec(cmd)
         # Update config window values if it's open
         if self.config_window is not None and self.config_window.winfo_exists():
@@ -508,10 +517,8 @@ class Ortho4XP_GUI(tk.Tk):
     def update_cfg(self, *args):
         if self.default_website.get():
             CFG.default_website = str(self.default_website.get())
-            CFG.global_cfg["default_website"] = str(self.default_website.get())
         if self.default_zl.get():
             CFG.default_zl = int(self.default_zl.get())
-            CFG.global_cfg["default_zl"] = int(self.default_zl.get())
 
     def get_lat_lon(self, check=True):
         error_string = ""
