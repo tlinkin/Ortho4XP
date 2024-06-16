@@ -7,7 +7,6 @@ import queue
 import threading
 import tkinter as tk
 from tkinter import (
-    RIDGE,
     N,
     S,
     E,
@@ -25,7 +24,6 @@ import tkinter.ttk as ttk
 from PIL import Image, ImageTk
 from O4_Cfg_Vars import (
     cfg_vars,
-    cfg_tile_vars,
     cfg_global_tile_vars,
     global_prefix,
     list_global_tile_vars,
@@ -141,13 +139,9 @@ class Ortho4XP_GUI(tk.Tk):
 
         # Frame instances and placement
         # Level 0
-        self.frame_top = tk.Frame(
-            self, border=4, relief=RIDGE, bg="light green"
-        )
+        self.frame_top = tk.Frame(self, border=4, bg="light green")
         self.frame_top.grid(row=0, column=0, sticky=N + S + W + E)
-        self.frame_console = tk.Frame(
-            self, border=4, relief=RIDGE, bg="light green"
-        )
+        self.frame_console = tk.Frame(self, border=2, bg="light green")
         self.frame_console.grid(row=1, column=0, sticky=N + S + W + E)
         # Level 1
         self.frame_tile = tk.Frame(
@@ -783,12 +777,12 @@ class Ortho4XP_Custom_ZL(tk.Toplevel):
 
         # Frames
         self.frame_left = tk.Frame(
-            self, border=4, relief=RIDGE, bg="light green"
+            self, border=4, bg="light green"
         )
         self.frame_left.grid(row=0, column=0, sticky=N + S + W + E)
 
         self.frame_right = tk.Frame(
-            self, border=4, relief=RIDGE, bg="light green"
+            self, border=1, relief="solid", bg="light green"
         )
         self.frame_right.grid(row=0, column=1, sticky=N + S + W + E)
         self.frame_right.rowconfigure(0, weight=1)
@@ -1355,11 +1349,11 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
 
         # Frames
         self.frame_left = tk.Frame(
-            self, border=4, relief=RIDGE, bg="light green"
+            self, border=4, bg="light green"
         )
         self.frame_left.grid(row=0, column=0, sticky=N + S + W + E)
         self.frame_right = tk.Frame(
-            self, border=4, relief=RIDGE, bg="light green"
+            self, border=1, bg="light green"
         )
         self.frame_right.grid(row=0, rowspan=60, column=1, sticky=N + S + W + E)
         self.frame_right.rowconfigure(0, weight=1, minsize=self.canvas_min_y)

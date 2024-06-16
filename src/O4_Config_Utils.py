@@ -5,7 +5,7 @@ import os
 from math import ceil
 import tkinter as tk
 import tkinter.ttk as ttk
-from tkinter import RIDGE, N, S, E, W, filedialog, messagebox
+from tkinter import N, S, E, W, filedialog, messagebox
 from O4_Cfg_Vars import (
     cfg_app_vars,
     cfg_global_tile_vars,
@@ -115,6 +115,7 @@ except:
 
 ################################################################################
 class Tile:
+    """Class for building tiles."""
     def __init__(self, lat, lon, custom_build_dir):
 
         self.lat = lat
@@ -228,7 +229,17 @@ class Tile:
         try:
             f = open(config_file, "w")
             for var in list_tile_vars:
-                f.write(var + "=" + str(eval("self." + var)) + "\n")
+                tile_zones = []
+                for zone in globals()["zone_list"]:
+                    _zone_list = [int(coord) for coord in zone[0]]
+                    _zone_list = set(_zone_list)
+                    if self.lat in _zone_list and self.lon+1 in _zone_list:
+                        tile_zones.append(zone)
+                        _LOGGER.info(tile_zones)
+                if var == "zone_list":
+                    f.write(var + "=" + str(tile_zones) + "\n")
+                else:
+                    f.write(var + "=" + str(eval("self." + var)) + "\n")
             f.close()
             return 1
         except Exception as e:
