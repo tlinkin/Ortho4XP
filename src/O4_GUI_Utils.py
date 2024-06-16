@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 import shutil
@@ -6,7 +7,6 @@ import queue
 import threading
 import tkinter as tk
 from tkinter import (
-    RIDGE,
     N,
     S,
     E,
@@ -22,6 +22,13 @@ from tkinter import (
 )
 import tkinter.ttk as ttk
 from PIL import Image, ImageTk
+from O4_Cfg_Vars import (
+    cfg_vars,
+    cfg_global_tile_vars,
+    global_prefix,
+    list_global_tile_vars,
+    list_tile_vars,
+)
 import O4_Version
 import O4_Imagery_Utils as IMG
 import O4_File_Names as FNAMES
@@ -34,7 +41,12 @@ import O4_Tile_Utils as TILE
 import O4_UI_Utils as UI
 import O4_Config_Utils as CFG
 
-# Set OsX=True if you prefer the OsX way of drawing existing tiles but 
+_LOGGER = logging.getLogger(__name__)
+_LOGGER.setLevel(logging.INFO)
+handler = logging.StreamHandler()
+_LOGGER.addHandler(handler)
+
+# Set OsX=True if you prefer the OsX way of drawing existing tiles but
 # are on Linux or Windows.
 OsX = "dar" in sys.platform
 
@@ -81,6 +93,7 @@ class Ortho4XP_GUI(tk.Tk):
 
         # Let UI know ourself
         UI.gui = self
+
         # Initialize providers combobox entries
         self.map_list = sorted(
             [
@@ -126,13 +139,9 @@ class Ortho4XP_GUI(tk.Tk):
 
         # Frame instances and placement
         # Level 0
-        self.frame_top = tk.Frame(
-            self, border=4, relief=RIDGE, bg="light green"
-        )
+        self.frame_top = tk.Frame(self, border=4, bg="light green")
         self.frame_top.grid(row=0, column=0, sticky=N + S + W + E)
-        self.frame_console = tk.Frame(
-            self, border=4, relief=RIDGE, bg="light green"
-        )
+        self.frame_console = tk.Frame(self, border=2, bg="light green")
         self.frame_console.grid(row=1, column=0, sticky=N + S + W + E)
         # Level 1
         self.frame_tile = tk.Frame(
@@ -158,6 +167,7 @@ class Ortho4XP_GUI(tk.Tk):
         # Widgets instances and placement
         # First row (Tile data)
         self.lat = tk.StringVar()
+        self.lat.trace_add("write", self.tile_change)
         tk.Label(self.frame_tile, text="Latitude:", bg="light green").grid(
             row=0, column=0, padx=5, pady=5, sticky=E + W
         )
@@ -171,6 +181,7 @@ class Ortho4XP_GUI(tk.Tk):
         self.lat_entry.grid(row=0, column=1, padx=5, pady=5, sticky=W)
 
         self.lon = tk.StringVar()
+        self.lat.trace_add("write", self.tile_change)
         tk.Label(
             self.frame_tile, anchor=W, text="Longitude:", bg="light green"
         ).grid(row=0, column=2, padx=5, pady=5, sticky=E + W)
@@ -369,6 +380,11 @@ class Ortho4XP_GUI(tk.Tk):
             self.default_website.set("BI")
             self.default_zl.set(16)
             self.custom_build_dir.set("")
+        # Needed for load_tile_cfg to check if the window is open
+        self.config_window = None
+        # If the tile doesn't have a config, we do end up loading the global settings
+        # again which is redundant as that's already been done in O4_Config_Utils
+        self.load_tile_cfg(int(self.lat.get()), int(self.lon.get()))
 
     # GUI methods
     def write(self, line):
@@ -400,6 +416,98 @@ class Ortho4XP_GUI(tk.Tk):
             pass
         self.callback_pgrb = self.after(100, self.pgrb_update)
 
+    def tile_change(self, *args):
+        """Load tile configuration on tile change."""
+        # TODO: Implement config loading on tile change here instead of using select_tile
+        # so we can catch if the tile is changed manually or with the mouse in the map view.
+        # Problem is right now this is being called if the lat or lon is changed, and if using
+        # the map, that is true so it gets called twice. Also, having issues with the lat/lon
+        # not being accurate when trying to implement here.
+        return
+
+    def load_tile_cfg(self, lat: int, lon: int) -> None:
+        """
+        Load tile configuration settings for specified tile.
+        Used for loading a config file when the tile is changed.
+
+        :param int lat: latitude in degrees (e.g., 35)
+        :param int lon: longitude in degrees (e.g., -115)
+        :return: None
+        """
+        # Currently doesn't work if coords changed manually in the GUI.
+        custom_build_dir = self.custom_build_dir_entry.get()
+        build_dir = FNAMES.build_dir(lat, lon, custom_build_dir)
+
+        tile_cfg_file = os.path.join(build_dir, "Ortho4XP_" + FNAMES.short_latlon(lat, lon) + ".cfg")
+
+        if os.path.exists(tile_cfg_file):
+            f = open(tile_cfg_file, "r")
+            for line in f.readlines():
+                line = line.strip()
+                if not line:
+                    continue
+                if line[0] == "#":
+                    continue
+                try:
+                    (var, value) = line.split("=")
+                    # compatibility with config files from version <= 1.20
+                    if value and value[0] in ('"', "'"):
+                        value = value[1:]
+                    if value and value[-1] in ('"', "'"):
+                        value = value[:-1]
+                    target = (
+                        cfg_vars[var]["module"] + "." + var
+                        if "module" in cfg_vars[var]
+                        else "CFG." + var
+                    )
+                    if cfg_vars[var]["type"] in (bool, list):
+                        cmd = target + "=" + value
+                    else:
+                        cmd = target + "=cfg_vars['" + var + "']['type'](value)"
+
+                    if var == "zone_list":
+                        # Append zones from config to global zone_list but also check if it's a duplicate
+                        for zone in eval(value):
+                            if zone not in CFG.zone_list:
+                                CFG.zone_list.append(zone)
+                        # Stop the loop here since we don't want to override the global zone_list which cmd will do
+                        continue
+                    exec(cmd)
+                except Exception as e:
+                    # compatibility with zone_list config files from version <= 1.20
+                    if "zone_list.append" in line:
+                        try:
+                            exec(line)
+                        except Exception as e:
+                            print(e)
+                            pass
+                    else:
+                        UI.vprint(2, e)
+                        pass
+            UI.vprint(1, f"Configuration loaded for tile at {lat} {lon}")
+            f.close()
+        else:
+            for var in list_global_tile_vars:
+                # Set the value of CFG.* from the value of CFG.global_*
+                _var = "CFG." + var.replace(global_prefix, "")
+                # Get the value of CFG.global_*
+                value = eval("CFG." + var)
+                if cfg_global_tile_vars[var]["type"] in (bool, list):
+                    cmd = _var + "=" + str(value)
+                else:
+                    cmd = _var + "=cfg_global_tile_vars['" + var + "']['type'](value)"
+                exec(cmd)
+        # Update config window values if it's open
+        if self.config_window is not None and self.config_window.winfo_exists():
+            self.load_tiles_config_interface_from_variables()
+
+    def load_tiles_config_interface_from_variables(self) -> None:
+        """Load the configuration interface values for only the tile config tab."""
+        for var in list_tile_vars:
+            target = "CFG." + var
+            # Set tile and app config tab values from global variables
+            self.config_window.v_[var].set(str(eval(target)))
+
     def update_cfg(self, *args):
         if self.default_website.get():
             CFG.default_website = str(self.default_website.get())
@@ -414,14 +522,16 @@ class Ortho4XP_GUI(tk.Tk):
                 error_string += (
                     "Latitude out of range (-85,84) for webmercator grid. "
                 )
-        except:
+        except Exception as e:
             error_string += "Latitude wrongly encoded. "
+            _LOGGER.error(e)
         try:
             lon = int(self.lon.get())
             if lon < -180 or lon > 179:
                 error_string += "Longitude out of range (-180,179)."
-        except:
+        except Exception as e:
             error_string += "Longitude wrongly encoded."
+            _LOGGER.error(e)
         if error_string and check:
             UI.vprint(0, "Error: " + error_string)
             return None
@@ -440,8 +550,9 @@ class Ortho4XP_GUI(tk.Tk):
         try:
             tile = self.tile_from_interface()
             tile.make_dirs()
-        except:
+        except Exception as e:
             UI.vprint(1, "Process aborted.\n")
+            _LOGGER.error(e)
             return 0
         self.working_thread = threading.Thread(
             target=VMAP.build_poly_file, args=[tile]
@@ -452,8 +563,9 @@ class Ortho4XP_GUI(tk.Tk):
         try:
             tile = self.tile_from_interface()
             tile.make_dirs()
-        except:
+        except Exception as e:
             UI.vprint(1, "Process aborted.\n")
+            _LOGGER.error(e)
             return 0
         self.working_thread = threading.Thread(
             target=MESH.build_mesh, args=[tile]
@@ -464,8 +576,9 @@ class Ortho4XP_GUI(tk.Tk):
         try:
             tile = self.tile_from_interface()
             tile.make_dirs()
-        except:
+        except Exception as e:
             UI.vprint(1, "Process aborted.\n")
+            _LOGGER.error(e)
             return 0
         self.working_thread = threading.Thread(
             target=MESH.sort_mesh, args=[tile]
@@ -476,8 +589,9 @@ class Ortho4XP_GUI(tk.Tk):
         try:
             tile = self.tile_from_interface()
             tile.make_dirs()
-        except:
+        except Exception as e:
             UI.vprint(1, "Process aborted.\n")
+            _LOGGER.error(e)
             return 0
         self.working_thread = threading.Thread(
             target=MESH.community_mesh, args=[tile]
@@ -489,8 +603,9 @@ class Ortho4XP_GUI(tk.Tk):
         try:
             tile = self.tile_from_interface()
             tile.make_dirs()
-        except:
+        except Exception as e:
             UI.vprint(1, "Process aborted.\n")
+            _LOGGER.error(e)
             return 0
         self.working_thread = threading.Thread(
             target=MASK.build_masks, args=[tile, for_imagery]
@@ -501,8 +616,9 @@ class Ortho4XP_GUI(tk.Tk):
         try:
             tile = self.tile_from_interface()
             tile.make_dirs()
-        except:
+        except Exception as e:
             UI.vprint(1, "Process aborted.\n")
+            _LOGGER.error(e)
             return 0
         self.working_thread = threading.Thread(
             target=TILE.build_tile, args=[tile]
@@ -513,8 +629,9 @@ class Ortho4XP_GUI(tk.Tk):
         try:
             tile = self.tile_from_interface()
             tile.make_dirs()
-        except:
+        except Exception as e:
             UI.vprint(1, "Process aborted.\n")
+            _LOGGER.error(e)
             return 0
         self.working_thread = threading.Thread(
             target=TILE.build_all, args=[tile]
@@ -534,7 +651,8 @@ class Ortho4XP_GUI(tk.Tk):
         except:
             try:
                 (lat, lon) = self.get_lat_lon()
-            except:
+            except Exception as e:
+                _LOGGER.error(e)
                 return 0
             self.config_window = CFG.Ortho4XP_Config(self)
             return 1
@@ -659,12 +777,12 @@ class Ortho4XP_Custom_ZL(tk.Toplevel):
 
         # Frames
         self.frame_left = tk.Frame(
-            self, border=4, relief=RIDGE, bg="light green"
+            self, border=4, bg="light green"
         )
         self.frame_left.grid(row=0, column=0, sticky=N + S + W + E)
 
         self.frame_right = tk.Frame(
-            self, border=4, relief=RIDGE, bg="light green"
+            self, border=1, relief="solid", bg="light green"
         )
         self.frame_right.grid(row=0, column=1, sticky=N + S + W + E)
         self.frame_right.rowconfigure(0, weight=1)
@@ -1231,11 +1349,11 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
 
         # Frames
         self.frame_left = tk.Frame(
-            self, border=4, relief=RIDGE, bg="light green"
+            self, border=4, bg="light green"
         )
         self.frame_left.grid(row=0, column=0, sticky=N + S + W + E)
         self.frame_right = tk.Frame(
-            self, border=4, relief=RIDGE, bg="light green"
+            self, border=1, bg="light green"
         )
         self.frame_right.grid(row=0, rowspan=60, column=1, sticky=N + S + W + E)
         self.frame_right.rowconfigure(0, weight=1, minsize=self.canvas_min_y)
@@ -1761,6 +1879,7 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
             )
         except Exception as e:
             UI.vprint(3, e)
+            _LOGGER.error(e)
 
     def delete_mask_data(self, lat: int, lon: int) -> None:
         """Delete cached mask data."""
@@ -1778,6 +1897,7 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
             )
         except Exception as e:
             UI.vprint(3, e)
+            _LOGGER.error(e)
 
     def delete_jpeg_imagery(self, lat: int, lon: int) -> None:
         """Delete ortho JPEG immagery."""
@@ -1800,6 +1920,7 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
             )
         except Exception as e:
             UI.vprint(3, e)
+            _LOGGER.error(e)
 
     def delete_tile_whole(self, lat: int, lon: int) -> None:
         """Delete all tile data."""
@@ -1822,6 +1943,7 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
             )
         except Exception as e:
             UI.vprint(3, e)
+            _LOGGER.error(e)
 
     def delete_tile_textures(self, lat: int, lon: int) -> None:
         """Delete tile textures."""
@@ -1868,6 +1990,7 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
         )
         self.parent.lat.set(lat)
         self.parent.lon.set(lon)
+        self.parent.load_tile_cfg(lat, lon)
         return
 
     def toggle_to_custom(self, event: tk.Event) -> None:
@@ -1910,7 +2033,8 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
         (lat, lon) = list_lat_lon[0]
         try:
             tile = CFG.Tile(lat, lon, self.custom_build_dir)
-        except:
+        except Exception as e:
+            _LOGGER.error(e)
             return 0
         args = [
             tile,
@@ -1986,13 +2110,14 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
                 image=self.photoNW,
             )
             self.canvas.tag_lower(self.canv_imgNW)
-        except:
+        except Exception as e:
             UI.lvprint(
                 0,
                 "Could not find Earth preview file",
                 filepreviewNW,
                 ", please update your installation from a fresh copy.",
             )
+            _LOGGER.error(e)
             return
         if nx0 < 2 ** (self.earthzl - 3) - 1:
             filepreviewNE = fileprefix + str(nx0 + 1) + "_" + str(ny0) + ".jpg"
