@@ -94,6 +94,10 @@ class Ortho4XP_GUI(tk.Tk):
         # Let UI know ourself
         UI.gui = self
 
+        # Catch operating system close button; does not cover SIGTERM or SIGINT
+        # when application closed using "Exit" (e.g. Command-Q on macOS).
+        self.protocol("WM_DELETE_WINDOW", self.exit_prg)
+
         # Initialize providers combobox entries
         self.map_list = sorted(
             [
@@ -141,7 +145,7 @@ class Ortho4XP_GUI(tk.Tk):
         # Level 0
         self.frame_top = tk.Frame(self, border=4, bg="light green")
         self.frame_top.grid(row=0, column=0, sticky=N + S + W + E)
-        self.frame_console = tk.Frame(self, border=2, bg="light green")
+        self.frame_console = tk.Frame(self, border=5, bg="light green")
         self.frame_console.grid(row=1, column=0, sticky=N + S + W + E)
         # Level 1
         self.frame_tile = tk.Frame(
@@ -1433,10 +1437,10 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
         row +=1
         tk.Label(
             self.frame_left,
-            text="Shortcuts :\n-----------------\nB2-press+hold=move map\n" + \
-                 "B1-double-click=select active\n" + \
-                 "Shift+B1=select multiple tiles\nCtrl+B1=link in Custom Scenery",
-            bg="light green",
+            text="Shortcuts :\n-----------------\nB2-press+hold: move map\n" + \
+                 "B1-double-click: select active\n" + \
+                 "Shift+B1: select multiple tiles\nCtrl+B1: link in Custom Scenery",
+            bg="light green"
         ).grid(row=row, column=0, padx=0, pady=5, sticky=N + S + E + W)
         row += 1
         # Refresh window

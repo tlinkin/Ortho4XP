@@ -278,6 +278,8 @@ class Ortho4XP_Config(tk.Toplevel):
         # Create a notebook which provides a tabbed interface
         self.notebook = ttk.Notebook(self)
         self.notebook.grid(row=0, column=0, sticky=N + S + W + E)
+        # Fixes issue where sometimes tab content is not displayed until mouse is moved
+        self.notebook.bind('<<NotebookTabChanged>>', lambda event: self.update_idletasks())
 
         # Create frames for each tab
         self.tile_config_frame = tk.Frame(self.notebook, bg="light green")
@@ -1035,21 +1037,16 @@ class Ortho4XP_Config(tk.Toplevel):
         # Get current app settings and add to dict
         for var in list_app_vars:
             current_config[var] = self.v_[var].get()
-
         try:
             if (os.path.exists(global_cfg_file)):
                 # Make a backup of the existing global config file
                 os.replace(global_cfg_file, global_cfg_bak_file)
-
                 # Get settings in existing config file returned as a dict
                 config_file = self.cfg_to_dict(global_cfg_bak_file)
-
                 # Update existing file with current app settings
                 config_file.update(current_config)
-
                 # Write to new configuration file
                 self.dict_to_cfg(global_cfg_file, config_file)
-
             else:
                 self.dict_to_cfg(global_cfg_file, current_config)
 
