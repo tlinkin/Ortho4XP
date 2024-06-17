@@ -36,7 +36,7 @@ import O4_Tile_Utils as TILE
 import O4_Overlay_Utils as OVL
 
 _LOGGER = logging.getLogger(__name__)
-_LOGGER.setLevel(logging.DEBUG)
+_LOGGER.setLevel(logging.INFO)
 handler = logging.StreamHandler()
 _LOGGER.addHandler(handler)
 
