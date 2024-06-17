@@ -849,26 +849,23 @@ class Ortho4XP_Config(tk.Toplevel):
             (lat, lon) = self.parent.get_lat_lon()
         except:
             return 0
-
-        response = messagebox.askyesnocancel("Confirmation", "Save tile zones?")
-
-        if response is None:
-            return
-
-        # Remove the current tile zones from global zone_list
-        if response is False:
-            tile_zones = []
-            # Find all the zones for the active tile
-            for zone in globals()["zone_list"]:
-                _zone_list = [int(coord) for coord in zone[0]]
-                _zone_list = set(_zone_list)
-                if lat in _zone_list and lon+1 in _zone_list:
-                    tile_zones.append(zone)
-            # Only remove the active tiles from the global zone_list
-            globals()["zone_list"] = [
-                zone for zone in globals()["zone_list"] if zone not in tile_zones
-            ]
-
+        # Find all the zones for the active tile
+        tile_zones = []
+        for zone in globals()["zone_list"]:
+            _zone_list = [int(coord) for coord in zone[0]]
+            _zone_list = set(_zone_list)
+            if lat in _zone_list and lon+1 in _zone_list:
+                tile_zones.append(zone)
+        if tile_zones:
+            response = messagebox.askyesnocancel("Confirmation", "Save tile zones?", parent=self)
+            if response is None:
+                return
+            # Remove the current tile zones from global zone_list
+            if response is False:
+                # Only remove the active tiles from the global zone_list
+                globals()["zone_list"] = [
+                    zone for zone in globals()["zone_list"] if zone not in tile_zones
+                ]
         for var in cfg_tile_vars:
             # Skip zone_list in cfg_tile_vars since zone_list is not in global config
             if var == "zone_list":
@@ -885,7 +882,6 @@ class Ortho4XP_Config(tk.Toplevel):
             # the value from the global config tab
             _global_var = global_prefix + var
             self.v_[var].set(self.v_[_global_var].get())
-
         UI.vprint(1, "Tile settings reset to global tile settings.")
 
     def load_tile_cfg(self) -> None:
@@ -1306,9 +1302,10 @@ class Ortho4XP_Config(tk.Toplevel):
                 message = (
                     f"Tile, Global and Application Config tabs have unsaved changes.\n"
                 )
-
+            # Appears to be an issue with macOS and using "Cancel" as sometimes it will present
+            # the messagebox twice. Does not happenw with "Yes/No" options.
             response = messagebox.askyesnocancel(
-                "Unsaved Changes", f"{message}\nSave changes?"
+                "Unsaved Changes", f"{message}\nSave changes?", parent=self
             )
             if response is None:
                 return "cancel"

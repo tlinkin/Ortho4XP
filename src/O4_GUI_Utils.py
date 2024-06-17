@@ -1986,10 +1986,6 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
 
     def select_tile(self, event):
         """Set active tile."""
-        # TODO: Figure out why the popup window shows up twice sometimes when you click cancel
-        # It looks like this method is being called twice from the same doube-click mouse event
-        # as it has the same event ID and time stamp. Tried using a debouncing technique
-        # but it didn't work. Might be a bug with tkinter?
         if self.parent.config_window is not None and self.parent.config_window.winfo_exists():
             result = self.parent.config_window.check_unsaved_changes(select_tile=True)
             if result == "cancel":
