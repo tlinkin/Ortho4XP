@@ -105,13 +105,23 @@ try:
             # Set all global tile config variables
             var = global_prefix + var
             set_global_variables(var, value)
-        except Exception as e:
+        except:
             UI.lvprint(1, "Global config file contains an invalid line:", line)
-            _LOGGER.error(e)
             pass
     f.close()
-except:
-    print("No global config file found. Reverting to default values.")
+except FileNotFoundError:
+    # Create a new global config file using default values
+    with open(global_cfg_file, "w") as file:
+        for var, value in cfg_global_tile_vars.items():
+            # Remove global_ prefix from cfg_global_tile_vars since that's not
+            # how they are stored in the global config file
+            _var = var.replace(global_prefix, "")
+            file.write(_var + "=" + str(value["default"]) + "\n")
+        for var, value in cfg_app_vars.items():
+            file.write(var + "=" + str(value["default"]) + "\n")
+    _LOGGER.info("No global config file found. New config created using defaults.")
+except Exception as e:
+    _LOGGER.error("Error accessing global config file: %s", e)
 
 ################################################################################
 class Tile:
@@ -235,7 +245,7 @@ class Tile:
                     _zone_list = set(_zone_list)
                     if self.lat in _zone_list and self.lon+1 in _zone_list:
                         tile_zones.append(zone)
-                        _LOGGER.info(tile_zones)
+                        _LOGGER.debug("Zones in tile found: %s", tile_zones)
                 if var == "zone_list":
                     f.write(var + "=" + str(tile_zones) + "\n")
                 else:
@@ -274,6 +284,9 @@ class Ortho4XP_Config(tk.Toplevel):
         )
         # Ortho4XP main window reference
         self.parent = parent
+
+        # Catch window close using operating system close button
+        self.protocol("WM_DELETE_WINDOW", self.check_unsaved_changes)
 
         # Create a notebook which provides a tabbed interface
         self.notebook = ttk.Notebook(self)
@@ -434,12 +447,11 @@ class Ortho4XP_Config(tk.Toplevel):
         dem_button = ttk.Button(
             frame_dem,
             image=self.folder_icon,
-            command=lambda: self.choose_dem(for_global=False),
+            command=lambda: self.choose_dem(),
             style="Flat.TButton",
         )
         dem_button.grid(row=0, column=2, padx=2, pady=0, sticky=W)
-        # Not sure why add_dem called for a keyboard-mouse event - leaving commented now
-        # dem_button.bind("<Shift-ButtonPress-1>", lambda event: self.add_dem(for_global=False))
+        dem_button.bind("<Shift-ButtonPress-1>", lambda event: self.add_dem())
 
         item = "fill_nodata"
 
@@ -492,7 +504,7 @@ class Ortho4XP_Config(tk.Toplevel):
         )
 
         self.btn_exit =ttk.Button(
-            frame_lastbtn, text="Exit", command=self.destroy
+            frame_lastbtn, text="Exit", command=self.check_unsaved_changes
         )
         self.btn_exit.grid(
             row=0, column=5, padx=5, pady=self.pady, sticky=N + S + E + W
@@ -627,12 +639,11 @@ class Ortho4XP_Config(tk.Toplevel):
         dem_button = ttk.Button(
             frame_dem,
             image=self.folder_icon,
-            command=lambda: self.choose_dem(for_global=True),
+            command=lambda: self.choose_dem(global_config=True),
             style="Flat.TButton",
         )
         dem_button.grid(row=0, column=2, padx=2, pady=0, sticky=W)
-        # Not sure why add_dem called for a keyboard-mouse event - leaving commented now
-        # dem_button.bind("<Shift-ButtonPress-1>", lambda event: self.add_dem(for_global=True))
+        dem_button.bind("<Shift-ButtonPress-1>", lambda event: self.add_dem(global_config=True))
 
         text = "fill_nodata"
         item = "global_fill_nodata"
@@ -677,7 +688,7 @@ class Ortho4XP_Config(tk.Toplevel):
         )
 
         self.btn_exit =ttk.Button(
-            frame_lastbtn, text="Exit", command=self.destroy
+            frame_lastbtn, text="Exit", command=self.check_unsaved_changes
         )
         self.btn_exit.grid(
             row=0, column=5, padx=5, pady=self.pady, sticky=N + S + E + W
@@ -816,7 +827,7 @@ class Ortho4XP_Config(tk.Toplevel):
         )
 
         self.btn_exit = ttk.Button(
-            frame_lastbtn, text="Exit", command=self.destroy
+            frame_lastbtn, text="Exit", command=self.check_unsaved_changes
         )
         self.btn_exit.grid(
             row=0, column=5, padx=5, pady=self.pady, sticky=N + S + E + W
@@ -839,7 +850,24 @@ class Ortho4XP_Config(tk.Toplevel):
         except:
             return 0
 
-        response = messagebox.askyesno("Confirmation", "Save tile zones?")
+        response = messagebox.askyesnocancel("Confirmation", "Save tile zones?")
+
+        if response is None:
+            return
+
+        # Remove the current tile zones from global zone_list
+        if response is False:
+            tile_zones = []
+            # Find all the zones for the active tile
+            for zone in globals()["zone_list"]:
+                _zone_list = [int(coord) for coord in zone[0]]
+                _zone_list = set(_zone_list)
+                if lat in _zone_list and lon+1 in _zone_list:
+                    tile_zones.append(zone)
+            # Only remove the active tiles from the global zone_list
+            globals()["zone_list"] = [
+                zone for zone in globals()["zone_list"] if zone not in tile_zones
+            ]
 
         for var in cfg_tile_vars:
             # Skip zone_list in cfg_tile_vars since zone_list is not in global config
@@ -857,20 +885,6 @@ class Ortho4XP_Config(tk.Toplevel):
             # the value from the global config tab
             _global_var = global_prefix + var
             self.v_[var].set(self.v_[_global_var].get())
-
-        # Remove the current tile zones from global zone_list
-        if not response:
-            tile_zones = []
-            # Find all the zones for the active tile
-            for zone in globals()["zone_list"]:
-                _zone_list = [int(coord) for coord in zone[0]]
-                _zone_list = set(_zone_list)
-                if lat in _zone_list and lon+1 in _zone_list:
-                    tile_zones.append(zone)
-            # Only remove the active tiles from the global zone_list
-            globals()["zone_list"] = [
-                zone for zone in globals()["zone_list"] if zone not in tile_zones
-            ]
 
         UI.vprint(1, "Tile settings reset to global tile settings.")
 
@@ -965,7 +979,7 @@ class Ortho4XP_Config(tk.Toplevel):
             _zone_list = set(_zone_list)
             if lat in _zone_list and lon+1 in _zone_list:
                 tile_zones.append(zone)
-
+                _LOGGER.debug("Zones saved for tile at %s %s: %s", lat, lon, tile_zones)
         for var in list_tile_vars:
             if var == "zone_list":
                 f.write(var + "=" + str(tile_zones) + "\n")
@@ -1016,7 +1030,7 @@ class Ortho4XP_Config(tk.Toplevel):
             UI.vprint(1, "Global tile configuration settings saved.")
         except Exception as e:
             UI.lvprint(1, "Could not write global config.")
-            _LOGGER.error(e)
+            _LOGGER.error("Could not write global config: %s", e)
         return
 
     def reset_app_cfg(self) -> None:
@@ -1053,7 +1067,9 @@ class Ortho4XP_Config(tk.Toplevel):
             UI.vprint(1, "Application configuration settings saved.")
         except Exception as e:
             UI.lvprint(1, "Could not write application settings to global config.")
-            _LOGGER.error(e)
+            _LOGGER.error(
+                "Could not write application settings to global config: %s", e
+            )
         return
 
     def apply_changes(self, tab: str) -> None:
@@ -1163,6 +1179,147 @@ class Ortho4XP_Config(tk.Toplevel):
                 )
                 self.popup("ERROR", error_text)
 
+    def check_unsaved_changes(self, select_tile=False) -> str:
+        """
+        Check for unsaved changes and prompt user to save.
+
+        :param bool select_tile: Used with select_tile method in O4_OrthoXP_Earth_Preview class
+        :return: Only returns "cancel" if user cancels the save prompt
+        :rtype: str
+        """
+        try:
+            (lat, lon) = self.parent.get_lat_lon()
+        except Exception as e:
+            _LOGGER.error("Could not get lat/lon coordinates: %s", e)
+            return
+
+        custom_build_dir = self.parent.custom_build_dir_entry.get()
+        build_dir = FNAMES.build_dir(lat, lon, custom_build_dir)
+
+        unsaved_changes = {"tile": False, "global": False, "application": False}
+        # Check Tile Config tab values against values in the tile config file
+        try:
+            with open(
+                os.path.join(
+                    build_dir, "Ortho4XP_" + FNAMES.short_latlon(lat, lon) + ".cfg"
+                ),
+                "r",
+            ) as f:
+                file_dict = dict(line.strip().split("=") for line in f if line.strip())
+                for var in list_tile_vars:
+                    # Skip default_website and default_zl since they're not a part of the tab settings
+                    if var == "default_website" or var == "default_zl":
+                        continue
+                    # Skip zone_list since we're only checking config tab values and default_website + default_zl
+                    if var == "zone_list":
+                        continue
+                    current_value = self.v_[var].get()
+                    # Compare current_value with value in file_dict
+                    if file_dict[var] != current_value:
+                        _LOGGER.debug(
+                            "Unsaved changes for %s - current value: %s, config file value: %s",
+                            var,
+                            current_value,
+                            file_dict[var],
+                        )
+                        unsaved_changes["tile"] = True
+                        break
+        except FileNotFoundError:
+            # Check Tile Config tab values against tile config values in the global config file
+            try:
+                with open(global_cfg_file, "r") as f:
+                    file_dict = dict(
+                        line.strip().split("=") for line in f if line.strip()
+                    )
+                    for var in list_global_tile_vars:
+                        # Skip default_website and default_zl since they're not a part of the tab settings
+                        # TODO: Remove this as it's not in list_global_tile_vars
+                        if var == "default_website" or var == "default_zl":
+                            continue
+                        # Config file has global_ prefix so we need to remove it
+                        _var = var.replace(global_prefix, "")
+                        current_value = self.v_[_var].get()
+                        if file_dict[_var] != current_value:
+                            _LOGGER.debug(
+                                "Unsaved changes for %s - current value: %s, config file value: %s",
+                                var,
+                                current_value,
+                                file_dict[_var],
+                            )
+                            unsaved_changes["tile"] = True
+                            break
+            except FileNotFoundError:
+                pass
+
+        except Exception as e:
+            _LOGGER.error("Error opening tile config file: %s", e)
+
+        if not select_tile:
+            # Check Global Config tab values against the global config file
+            try:
+                with open(global_cfg_file, "r") as f:
+                    file_dict = dict(
+                        line.strip().split("=") for line in f if line.strip()
+                    )
+                    for var in list_global_tile_vars:
+                        # Config file has global_ prefix so we need to remove it
+                        _var = var.replace(global_prefix, "")
+                        current_value = self.v_[var].get()
+                        if file_dict[_var] != current_value:
+                            _LOGGER.debug(
+                                "Unsaved changes for %s - current value: %s, config file value: %s",
+                                var,
+                                current_value,
+                                file_dict[_var],
+                            )
+                            unsaved_changes["global"] = True
+                            break
+                    # Check App Config tab values against the global config file
+                    for var in list_app_vars:
+                        current_value = self.v_[var].get()
+                        if file_dict[var] != current_value:
+                            _LOGGER.debug(
+                                "Unsaved changes for %s - current value: %s, config file value: %s",
+                                var,
+                                current_value,
+                                file_dict[var],
+                            )
+                            unsaved_changes["application"] = True
+                            break
+            except FileNotFoundError:
+                _LOGGER.error("Global configuration file (Ortho4XP.cfg) not found.")
+            except Exception as e:
+                _LOGGER.error("Error opening global config file: %s", e)
+
+        if any(unsaved_changes.values()):
+            message = ""
+            count = sum(unsaved_changes.values())
+            if count == 1:
+                key = next(key for key, value in unsaved_changes.items() if value)
+                message = f"{key.capitalize()} Config tab has unsaved changes.\n"
+            elif count == 2:
+                keys = [
+                    key.capitalize() for key, value in unsaved_changes.items() if value
+                ]
+                message = f"{', '.join(keys[:-1])} and {keys[-1]} Config tabs have unsaved changes.\n"
+            elif count == 3:
+                message = (
+                    f"Tile, Global and Application Config tabs have unsaved changes.\n"
+                )
+
+            response = messagebox.askyesnocancel(
+                "Unsaved Changes", f"{message}\nSave changes?"
+            )
+            if response is None:
+                return "cancel"
+            elif response:
+                self.write_tile_cfg()
+                self.write_global_cfg()
+                self.write_app_cfg()
+
+        if not select_tile:
+            self.destroy()
+
     def dict_to_cfg(self, file:str, cfg_dict: dict) -> None:
         """
         Convert dictionary to key=value format and write to file.
@@ -1191,7 +1348,7 @@ class Ortho4XP_Config(tk.Toplevel):
                     config_dict[key.strip()] = value.strip()
         return config_dict
 
-    def choose_dem(self):
+    def choose_dem(self, global_config=False):
         tmp = filedialog.askopenfilename(
             parent=self,
             title="Choose DEM file",
@@ -1201,24 +1358,27 @@ class Ortho4XP_Config(tk.Toplevel):
             ],
         )
         if tmp:
-            self.v_["custom_dem"].set(str(tmp))
-
-    def add_dem(self, event):
-        tmp = filedialog.askopenfilename(
-            parent=self,
-            title="Choose DEM file",
-            filetypes=[
-                ("DEM files", (".tif", ".hgt", ".raw", ".img")),
-                ("all files", ".*"),
-            ],
-        )
-        if tmp:
-            if not self.v_["custom_dem"].get():
-                self.v_["custom_dem"].set(str(tmp))
+            custom_dem = "global_custom_dem" if global_config else "custom_dem"
+            if not self.v_[custom_dem].get():
+                self.v_[custom_dem].set(str(tmp))
             else:
-                self.v_["custom_dem"].set(
-                    self.v_["custom_dem"].get() + ";" + str(tmp)
-                )
+                self.v_[custom_dem].set(self.v_[custom_dem].get() + ";" + str(tmp))
+
+    def add_dem(self, global_config=False):
+        tmp = filedialog.askopenfilename(
+            parent=self,
+            title="Choose DEM file",
+            filetypes=[
+                ("DEM files", (".tif", ".hgt", ".raw", ".img")),
+                ("all files", ".*"),
+            ],
+        )
+        if tmp:
+            custom_dem = "global_custom_dem" if global_config else "custom_dem"
+            if not self.v_[custom_dem].get():
+                self.v_[custom_dem].set(str(tmp))
+            else:
+                self.v_[custom_dem].set(self.v_[custom_dem].get() + ";" + str(tmp))
 
     def choose_dir(self, item):
         tmp = filedialog.askdirectory(parent=self)

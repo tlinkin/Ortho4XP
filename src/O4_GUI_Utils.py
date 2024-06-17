@@ -199,7 +199,7 @@ class Ortho4XP_GUI(tk.Tk):
         self.lon_entry.grid(row=0, column=3, padx=5, pady=5, sticky=W)
 
         self.default_website = tk.StringVar()
-        self.default_website.trace_add("write", self.update_cfg)
+        self.default_website.trace_add("write", self.update_website)
         tk.Label(
             self.frame_tile, anchor=W, text="Imagery:", bg="light green"
         ).grid(row=0, column=4, padx=5, pady=5, sticky=E + W)
@@ -214,7 +214,7 @@ class Ortho4XP_GUI(tk.Tk):
         self.img_combo.grid(row=0, column=5, padx=5, pady=5, sticky=W)
 
         self.default_zl = tk.StringVar()
-        self.default_zl.trace_add("write", self.update_cfg)
+        self.default_zl.trace_add("write", self.update_zl)
         tk.Label(
             self.frame_tile, anchor=W, text="Zoomlevel:", bg="light green"
         ).grid(row=0, column=6, padx=5, pady=5, sticky=E + W)
@@ -468,7 +468,6 @@ class Ortho4XP_GUI(tk.Tk):
                         cmd = target + "=" + value
                     else:
                         cmd = target + "=cfg_vars['" + var + "']['type'](value)"
-
                     if var == "zone_list":
                         # Append zones from config to global zone_list but also check if it's a duplicate
                         for zone in eval(value):
@@ -488,6 +487,9 @@ class Ortho4XP_GUI(tk.Tk):
                     else:
                         UI.vprint(2, e)
                         pass
+                # Update main window GUI values
+                self.default_website.set(CFG.default_website)
+                self.default_zl.set(CFG.default_zl)
             UI.vprint(1, f"Configuration loaded for tile at {lat} {lon}")
             f.close()
         else:
@@ -501,20 +503,27 @@ class Ortho4XP_GUI(tk.Tk):
                 else:
                     cmd = _var + "=cfg_global_tile_vars['" + var + "']['type'](value)"
                 exec(cmd)
-        # Update config window values if it's open
+        # Update config window tile tab values if it's open
         if self.config_window is not None and self.config_window.winfo_exists():
             self.load_tiles_config_interface_from_variables()
 
     def load_tiles_config_interface_from_variables(self) -> None:
         """Load the configuration interface values for only the tile config tab."""
+        # Skip default_website and default_zl since they're not on the config tab
         for var in list_tile_vars:
+            if var == "default_website" or var == "default_zl":
+                continue
             target = "CFG." + var
             # Set tile and app config tab values from global variables
             self.config_window.v_[var].set(str(eval(target)))
 
-    def update_cfg(self, *args):
+    def update_website(self, *args) -> None:
+        """Update global default_website variable from GUI."""
         if self.default_website.get():
             CFG.default_website = str(self.default_website.get())
+
+    def update_zl(self, *args) -> None:
+        """Update global default_zl variable from GUI."""
         if self.default_zl.get():
             CFG.default_zl = int(self.default_zl.get())
 
@@ -1977,6 +1986,15 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
 
     def select_tile(self, event):
         """Set active tile."""
+        # TODO: Figure out why the popup window shows up twice sometimes when you click cancel
+        # It looks like this method is being called twice from the same doube-click mouse event
+        # as it has the same event ID and time stamp. Tried using a debouncing technique
+        # but it didn't work. Might be a bug with tkinter?
+        if self.parent.config_window is not None and self.parent.config_window.winfo_exists():
+            result = self.parent.config_window.check_unsaved_changes(select_tile=True)
+            if result == "cancel":
+                _LOGGER.info("canceled.")
+                return
         x = self.canvas.canvasx(event.x)
         y = self.canvas.canvasy(event.y)
         (lat, lon) = [floor(t) for t in GEO.pix_to_wgs84(x, y, self.earthzl)]
