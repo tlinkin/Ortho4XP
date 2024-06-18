@@ -1026,7 +1026,7 @@ class Ortho4XP_Config(tk.Toplevel):
             UI.vprint(1, "Global tile configuration settings saved.")
         except Exception as e:
             UI.lvprint(1, "Could not write global config.")
-            _LOGGER.error("Could not write global config: %s", e)
+            _LOGGER.exception("Could not write global config: %s", e)
         return
 
     def reset_app_cfg(self) -> None:
@@ -1063,7 +1063,7 @@ class Ortho4XP_Config(tk.Toplevel):
             UI.vprint(1, "Application configuration settings saved.")
         except Exception as e:
             UI.lvprint(1, "Could not write application settings to global config.")
-            _LOGGER.error(
+            _LOGGER.exception(
                 "Could not write application settings to global config: %s", e
             )
         return
@@ -1186,7 +1186,7 @@ class Ortho4XP_Config(tk.Toplevel):
         try:
             (lat, lon) = self.parent.get_lat_lon()
         except Exception as e:
-            _LOGGER.error("Could not get lat/lon coordinates: %s", e)
+            _LOGGER.exception("Could not get lat/lon coordinates: %s", e)
             return
 
         custom_build_dir = self.parent.custom_build_dir_entry.get()
@@ -1209,14 +1209,16 @@ class Ortho4XP_Config(tk.Toplevel):
                     # Skip zone_list since we're only checking config tab values and default_website + default_zl
                     if var == "zone_list":
                         continue
-                    current_value = self.v_[var].get()
-                    # Compare current_value with value in file_dict
-                    if file_dict[var] != current_value:
+                    tab_value = self.set_value_type(var, self.v_[var].get())
+                    file_value = self.set_value_type(var, file_dict[var])
+
+                    # Compare tab_value with value in file_dict
+                    if file_value != tab_value:
                         _LOGGER.debug(
-                            "Unsaved changes for %s - current value: %s, config file value: %s",
+                            "Unsaved changes in tile config for %s - current value: %s, config file value: %s",
                             var,
-                            current_value,
-                            file_dict[var],
+                            tab_value,
+                            file_value,
                         )
                         unsaved_changes["tile"] = True
                         break
@@ -1228,19 +1230,18 @@ class Ortho4XP_Config(tk.Toplevel):
                         line.strip().split("=") for line in f if line.strip()
                     )
                     for var in list_global_tile_vars:
-                        # Skip default_website and default_zl since they're not a part of the tab settings
-                        # TODO: Remove this as it's not in list_global_tile_vars
-                        if var == "default_website" or var == "default_zl":
-                            continue
-                        # Config file has global_ prefix so we need to remove it
+                        # Config file doesn't have global_ prefix so we need to remove it
                         _var = var.replace(global_prefix, "")
-                        current_value = self.v_[_var].get()
-                        if file_dict[_var] != current_value:
+
+                        tab_value = self.set_value_type(_var, self.v_[_var].get())
+                        file_value = self.set_value_type(_var, file_dict[_var])
+
+                        if file_value != tab_value:
                             _LOGGER.debug(
-                                "Unsaved changes for %s - current value: %s, config file value: %s",
+                                "Unsaved changes in global config for %s - current value: %s, config file value: %s",
                                 var,
-                                current_value,
-                                file_dict[_var],
+                                tab_value,
+                                file_value,
                             )
                             unsaved_changes["tile"] = True
                             break
@@ -1248,7 +1249,7 @@ class Ortho4XP_Config(tk.Toplevel):
                 pass
 
         except Exception as e:
-            _LOGGER.error("Error opening tile config file: %s", e)
+            _LOGGER.exception(e)
 
         if not select_tile:
             # Check Global Config tab values against the global config file
@@ -1260,32 +1261,37 @@ class Ortho4XP_Config(tk.Toplevel):
                     for var in list_global_tile_vars:
                         # Config file has global_ prefix so we need to remove it
                         _var = var.replace(global_prefix, "")
-                        current_value = self.v_[var].get()
-                        if file_dict[_var] != current_value:
+
+                        tab_value = self.set_value_type(_var, self.v_[var].get())
+                        file_value = self.set_value_type(_var, file_dict[_var])
+
+                        if file_value != tab_value:
                             _LOGGER.debug(
-                                "Unsaved changes for %s - current value: %s, config file value: %s",
+                                "Unsaved changes in global config for %s - current value: %s, config file value: %s",
                                 var,
-                                current_value,
-                                file_dict[_var],
+                                tab_value,
+                                file_value,
                             )
                             unsaved_changes["global"] = True
                             break
                     # Check App Config tab values against the global config file
                     for var in list_app_vars:
-                        current_value = self.v_[var].get()
-                        if file_dict[var] != current_value:
+                        tab_value = self.set_value_type(var, self.v_[var].get())
+                        file_value = self.set_value_type(var, file_dict[var])
+
+                        if file_value != tab_value:
                             _LOGGER.debug(
-                                "Unsaved changes for %s - current value: %s, config file value: %s",
+                                "Unsaved changes in global config for %s - current value: %s, config file value: %s",
                                 var,
-                                current_value,
-                                file_dict[var],
+                                tab_value,
+                                file_value,
                             )
                             unsaved_changes["application"] = True
                             break
             except FileNotFoundError:
                 _LOGGER.error("Global configuration file (Ortho4XP.cfg) not found.")
             except Exception as e:
-                _LOGGER.error("Error opening global config file: %s", e)
+                _LOGGER.exception(e)
 
         if any(unsaved_changes.values()):
             message = ""
@@ -1300,7 +1306,7 @@ class Ortho4XP_Config(tk.Toplevel):
                 message = f"{', '.join(keys[:-1])} and {keys[-1]} Config tabs have unsaved changes.\n"
             elif count == 3:
                 message = (
-                    f"Tile, Global and Application Config tabs have unsaved changes.\n"
+                    f"Tile, Global, and Application Config tabs have unsaved changes.\n"
                 )
             # Appears to be an issue with macOS and using "Cancel" as sometimes it will present
             # the messagebox twice. Does not happenw with "Yes/No" options.
@@ -1316,6 +1322,26 @@ class Ortho4XP_Config(tk.Toplevel):
 
         if not select_tile:
             self.destroy()
+
+    def set_value_type(self, var: str, value) -> float | bool | str | list:
+        """
+        Return value based on type in cfg_vars.
+        
+        :param str value: value to be converted.
+        :return: value in type based on cfg_vars
+        """
+        # Using floats for both int and float since we're going to compare them
+        if cfg_vars[var]["type"] == int or cfg_vars[var]["type"] == float:
+            return float(value)
+        if cfg_vars[var]["type"] == bool:
+            if value == "True":
+                return True
+            if value == "False":
+                return False
+        if cfg_vars[var]["type"] == str:
+            return str(value)
+        if cfg_vars[var]["type"] == list:
+            return list(value)
 
     def dict_to_cfg(self, file:str, cfg_dict: dict) -> None:
         """

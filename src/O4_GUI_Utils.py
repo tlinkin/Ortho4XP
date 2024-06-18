@@ -537,14 +537,14 @@ class Ortho4XP_GUI(tk.Tk):
                 )
         except Exception as e:
             error_string += "Latitude wrongly encoded. "
-            _LOGGER.error(e)
+            _LOGGER.exception(e)
         try:
             lon = int(self.lon.get())
             if lon < -180 or lon > 179:
                 error_string += "Longitude out of range (-180,179)."
         except Exception as e:
             error_string += "Longitude wrongly encoded."
-            _LOGGER.error(e)
+            _LOGGER.exception(e)
         if error_string and check:
             UI.vprint(0, "Error: " + error_string)
             return None
@@ -565,7 +565,7 @@ class Ortho4XP_GUI(tk.Tk):
             tile.make_dirs()
         except Exception as e:
             UI.vprint(1, "Process aborted.\n")
-            _LOGGER.error(e)
+            _LOGGER.exception(e)
             return 0
         self.working_thread = threading.Thread(
             target=VMAP.build_poly_file, args=[tile]
@@ -578,7 +578,7 @@ class Ortho4XP_GUI(tk.Tk):
             tile.make_dirs()
         except Exception as e:
             UI.vprint(1, "Process aborted.\n")
-            _LOGGER.error(e)
+            _LOGGER.exception("Exception on build_mesh")
             return 0
         self.working_thread = threading.Thread(
             target=MESH.build_mesh, args=[tile]
@@ -591,7 +591,7 @@ class Ortho4XP_GUI(tk.Tk):
             tile.make_dirs()
         except Exception as e:
             UI.vprint(1, "Process aborted.\n")
-            _LOGGER.error(e)
+            _LOGGER.exception("Exception on sort_mesh")
             return 0
         self.working_thread = threading.Thread(
             target=MESH.sort_mesh, args=[tile]
@@ -604,7 +604,7 @@ class Ortho4XP_GUI(tk.Tk):
             tile.make_dirs()
         except Exception as e:
             UI.vprint(1, "Process aborted.\n")
-            _LOGGER.error(e)
+            _LOGGER.exception("Exception on community_mesh")
             return 0
         self.working_thread = threading.Thread(
             target=MESH.community_mesh, args=[tile]
@@ -618,7 +618,7 @@ class Ortho4XP_GUI(tk.Tk):
             tile.make_dirs()
         except Exception as e:
             UI.vprint(1, "Process aborted.\n")
-            _LOGGER.error(e)
+            _LOGGER.exception(e)
             return 0
         self.working_thread = threading.Thread(
             target=MASK.build_masks, args=[tile, for_imagery]
@@ -631,7 +631,7 @@ class Ortho4XP_GUI(tk.Tk):
             tile.make_dirs()
         except Exception as e:
             UI.vprint(1, "Process aborted.\n")
-            _LOGGER.error(e)
+            _LOGGER.exception(e)
             return 0
         self.working_thread = threading.Thread(
             target=TILE.build_tile, args=[tile]
@@ -644,7 +644,7 @@ class Ortho4XP_GUI(tk.Tk):
             tile.make_dirs()
         except Exception as e:
             UI.vprint(1, "Process aborted.\n")
-            _LOGGER.error(e)
+            _LOGGER.exception(e)
             return 0
         self.working_thread = threading.Thread(
             target=TILE.build_all, args=[tile]
@@ -665,7 +665,7 @@ class Ortho4XP_GUI(tk.Tk):
             try:
                 (lat, lon) = self.get_lat_lon()
             except Exception as e:
-                _LOGGER.error(e)
+                _LOGGER.exception(e)
                 return 0
             self.config_window = CFG.Ortho4XP_Config(self)
             return 1
@@ -1892,7 +1892,7 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
             )
         except Exception as e:
             UI.vprint(3, e)
-            _LOGGER.error(e)
+            _LOGGER.exception(e)
 
     def delete_mask_data(self, lat: int, lon: int) -> None:
         """Delete cached mask data."""
@@ -1910,7 +1910,7 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
             )
         except Exception as e:
             UI.vprint(3, e)
-            _LOGGER.error(e)
+            _LOGGER.exception(e)
 
     def delete_jpeg_imagery(self, lat: int, lon: int) -> None:
         """Delete ortho JPEG immagery."""
@@ -1933,7 +1933,7 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
             )
         except Exception as e:
             UI.vprint(3, e)
-            _LOGGER.error(e)
+            _LOGGER.exception(e)
 
     def delete_tile_whole(self, lat: int, lon: int) -> None:
         """Delete all tile data."""
@@ -1956,7 +1956,7 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
             )
         except Exception as e:
             UI.vprint(3, e)
-            _LOGGER.error(e)
+            _LOGGER.exception(e)
 
     def delete_tile_textures(self, lat: int, lon: int) -> None:
         """Delete tile textures."""
@@ -1989,7 +1989,6 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
         if self.parent.config_window is not None and self.parent.config_window.winfo_exists():
             result = self.parent.config_window.check_unsaved_changes(select_tile=True)
             if result == "cancel":
-                _LOGGER.info("canceled.")
                 return
         x = self.canvas.canvasx(event.x)
         y = self.canvas.canvasy(event.y)
@@ -2052,7 +2051,7 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
         try:
             tile = CFG.Tile(lat, lon, self.custom_build_dir)
         except Exception as e:
-            _LOGGER.error(e)
+            _LOGGER.exception(e)
             return 0
         args = [
             tile,
@@ -2135,7 +2134,7 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
                 filepreviewNW,
                 ", please update your installation from a fresh copy.",
             )
-            _LOGGER.error(e)
+            _LOGGER.exception(e)
             return
         if nx0 < 2 ** (self.earthzl - 3) - 1:
             filepreviewNE = fileprefix + str(nx0 + 1) + "_" + str(ny0) + ".jpg"
