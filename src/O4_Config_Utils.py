@@ -1,5 +1,6 @@
 """"Ortho4XP configuration window."""
 
+import ast
 import logging
 import os
 from math import ceil
@@ -14,6 +15,7 @@ from O4_Cfg_Vars import (
     gui_app_vars_short,
     gui_app_vars_long,
     list_app_vars,
+    list_cfg_vars,
     list_global_tile_vars,
     list_global_vector_vars,
     list_global_mesh_vars,
@@ -68,6 +70,19 @@ def set_global_variables(var: str, value: str) -> None:
         cmd = target + "=cfg_vars['" + var + "']['type'](value)"
     exec(cmd)
 
+def config_compatibility(value) -> str:
+    """
+    Check for compatibility with config files from version <= 1.20.
+    
+    :param str value: value to check
+    :returns: value in format based on cfg_vars
+    :return type: str
+    """
+    if value and value[0] in ('"', "'"):
+        value = value[1:]
+    if value and value[-1] in ('"', "'"):
+        value = value[:-1]
+    return value
 
 ################################################################################
 # Initialization to default values
@@ -95,11 +110,7 @@ try:
             continue
         try:
             (var, value) = line.split("=")
-            # compatibility with config files from version <= 1.20
-            if value and value[0] in ('"', "'"):
-                value = value[1:]
-            if value and value[-1] in ('"', "'"):
-                value = value[:-1]
+            value = config_compatibility(value)
             # Set all tile and app config variables
             set_global_variables(var, value)
             # Set all global tile config variables
@@ -163,18 +174,29 @@ class Tile:
                 )
                 raise Exception
 
-    def read_from_config(self, config_file=None):
+    def read_from_config(self, config_file=None, use_global=False):
+        """
+        Read tile config from config file and update class variables.
+
+        :params str config_file: path to config file; unknown use case
+        :params bool use_global: force use of global config file
+        
+        :returns: 1 if successful, 0 if not
+        :return type: int
+        """
         if not config_file:
             config_file = os.path.join(
                 self.build_dir,
                 "Ortho4XP_" + FNAMES.short_latlon(self.lat, self.lon) + ".cfg",
             )
-            if not os.path.isfile(config_file):
-                config_file = os.path.join(self.build_dir, "Ortho4XP.cfg")
+            if not os.path.isfile(config_file) or use_global:
+                config_file = global_cfg_file
+
                 if not os.path.isfile(config_file):
+                    
                     UI.lvprint(
                         0,
-                        "CFG error: No config file found for tile",
+                        "CFG error: No tile or global config file found.",
                         FNAMES.short_latlon(self.lat, self.lon),
                     )
                     return 0
@@ -189,10 +211,7 @@ class Tile:
                 try:
                     (var, value) = line.split("=")
                     # compatibility with config files from version <= 1.20
-                    if value and value[0] in ('"', "'"):
-                        value = value[1:]
-                    if value and value[-1] in ('"', "'"):
-                        value = value[:-1]
+                    value = config_compatibility(value)
                     if cfg_vars[var]["type"] in (bool, list):
                         cmd = "self." + var + "=" + value
                     else:
@@ -226,6 +245,14 @@ class Tile:
             return 0
 
     def write_to_config(self, config_file = None):
+        """
+        Create tile config file from class variables.
+
+        :params str config_file: path to config file; unknown use case
+        
+        :returns: 1 if successful, 0 if not
+        :return type: int
+        """
         if not config_file:
             config_file = os.path.join(
                 self.build_dir,
@@ -308,6 +335,7 @@ class Ortho4XP_Config(tk.Toplevel):
         self.v_ = {}
         for item in cfg_vars:
             self.v_[item] = tk.StringVar()
+        self.entry_ = {}
 
         # Set values for Tkinter objects for GUI display
         self.v_["default_website"] = self.parent.default_website
@@ -348,7 +376,6 @@ class Ortho4XP_Config(tk.Toplevel):
         main_frame.rowconfigure(2, weight=0)
         main_frame.columnconfigure(0, weight=1)
 
-        self.entry_ = {}
         col = 0
         next_row = 0
 
@@ -482,6 +509,15 @@ class Ortho4XP_Config(tk.Toplevel):
             command=self.reset_tile_cfg,
         )
         self.btn_reset_tile_cfg.grid(
+            row=0, column=1, padx=5, pady=self.pady, sticky=N + S + E + W
+        )
+
+        self.btn_restore_tile_cfg = ttk.Button(
+            frame_lastbtn,
+            text="Load Backup Cfg",
+            command=self.load_backup_tile_cfg,
+        )
+        self.btn_restore_tile_cfg.grid(
             row=0, column=2, padx=5, pady=self.pady, sticky=N + S + E + W
         )
 
@@ -538,7 +574,6 @@ class Ortho4XP_Config(tk.Toplevel):
         main_frame.rowconfigure(2, weight=0)
         main_frame.columnconfigure(0, weight=1)
 
-        self.entry_ = {}
         col = 0
         next_row = 0
 
@@ -675,6 +710,15 @@ class Ortho4XP_Config(tk.Toplevel):
             command=self.reset_global_cfg,
         )
         self.btn_reset_global_cfg.grid(
+            row=0, column=2, padx=5, pady=self.pady, sticky=N + S + E + W
+        )
+
+        self.btn_load_backup_global_tile_cfg = ttk.Button(
+            frame_lastbtn,
+            text="Load Backup Cfg",
+            command=self.load_backup_global_tile_cfg,
+        )
+        self.btn_load_backup_global_tile_cfg.grid(
             row=0, column=3, padx=5, pady=self.pady, sticky=N + S + E + W
         )
 
@@ -721,7 +765,6 @@ class Ortho4XP_Config(tk.Toplevel):
         main_frame.rowconfigure(2, weight=0)
         main_frame.columnconfigure(0, weight=1)
 
-        self.entry_ = {}
         row = 2
         col = 0
 
@@ -814,6 +857,15 @@ class Ortho4XP_Config(tk.Toplevel):
             command=self.reset_app_cfg,
         )
         self.btn_reload_app_cfg.grid(
+            row=0, column=2, padx=5, pady=self.pady, sticky=N + S + E + W
+        )
+
+        self.btn_load_backup_app_cfg = ttk.Button(
+            frame_lastbtn,
+            text="Load Backup Cfg",
+            command=self.load_backup_app_cfg,
+        )
+        self.btn_load_backup_app_cfg.grid(
             row=0, column=3, padx=5, pady=self.pady, sticky=N + S + E + W
         )
 
@@ -835,7 +887,7 @@ class Ortho4XP_Config(tk.Toplevel):
 
     def load_interface_from_variables(self) -> None:
         """Load the configuration interface values for all tabs."""
-        for var in cfg_vars:
+        for var in list_cfg_vars:
             target = (
                 cfg_vars[var]["module"] + "." + var
                 if "module" in cfg_vars[var]
@@ -866,8 +918,8 @@ class Ortho4XP_Config(tk.Toplevel):
                 globals()["zone_list"] = [
                     zone for zone in globals()["zone_list"] if zone not in tile_zones
                 ]
-        for var in cfg_tile_vars:
-            # Skip zone_list in cfg_tile_vars since zone_list is not in global config
+        for var in list_tile_vars:
+            # Skip zone_list in list_tile_vars since zone_list is not in global config
             if var == "zone_list":
                 continue
             # default_website is not stored in global config
@@ -878,11 +930,55 @@ class Ortho4XP_Config(tk.Toplevel):
             if var == "default_zl":
                 self.v_["zone_list"].set(self.parent.default_zl.get())
                 continue
-            # Since we're looping through cfg_tile_vars, we need to prefix the key for getting
+            # Since we're looping through list_tile_vars, we need to prefix the key for getting
             # the value from the global config tab
             _global_var = global_prefix + var
             self.v_[var].set(self.v_[_global_var].get())
         UI.vprint(1, "Tile settings reset to global tile settings.")
+
+    def load_backup_tile_cfg(self) -> None:
+        """Load backup tile configuration settings."""
+        try:
+            (lat, lon) = self.parent.get_lat_lon()
+        except:
+            return 0
+        custom_build_dir = self.parent.custom_build_dir_entry.get()
+        build_dir = FNAMES.build_dir(lat, lon, custom_build_dir)
+        try:
+            f = open(
+                os.path.join(
+                    build_dir,
+                    "Ortho4XP_" + FNAMES.short_latlon(lat, lon) + ".cfg.bak",
+                ),
+                "r",
+            )
+        except FileNotFoundError:
+            messagebox.showinfo("Not found", "No backup tile configuration found.")
+            return
+
+        for line in f.readlines():
+            line = line.strip()
+            if not line or line[0] == "#":
+                continue
+            try:
+                (var, value) = line.split("=")
+                value = config_compatibility(value)
+                self.v_[var].set(value)
+            except Exception as e:
+                # compatibility with zone_list config files from version <= 1.20
+                if "zone_list.append" in line:
+                    try:
+                        exec(line)
+                    except Exception as e:
+                        print(e)
+                        pass
+                else:
+                    UI.vprint(2, e)
+                    pass
+        # Apply changes to update global variables
+        self.apply_changes("tile")
+        UI.vprint(0, f"Backup configuration loaded for tile at {lat}{lon}")
+        f.close()
 
     def load_tile_cfg(self) -> None:
         """Load tile configuration settings for active tile."""
@@ -905,7 +1001,7 @@ class Ortho4XP_Config(tk.Toplevel):
             try:
                 f = open(os.path.join(build_dir, "Ortho4XP.cfg"), "r")
             except:
-                self.popup("ERROR", "No config file found in " + str(build_dir))
+                messagebox.showinfo("Not found", "No tile configuration found.")
                 return 0
         for line in f.readlines():
             line = line.strip()
@@ -915,11 +1011,7 @@ class Ortho4XP_Config(tk.Toplevel):
                 continue
             try:
                 (var, value) = line.split("=")
-                # compatibility with config files from version <= 1.20
-                if value and value[0] in ('"', "'"):
-                    value = value[1:]
-                if value and value[-1] in ('"', "'"):
-                    value = value[:-1]
+                value = config_compatibility(value)
                 self.v_[var].set(value)
             except Exception as e:
                 # compatibility with zone_list config files from version <= 1.20
@@ -936,7 +1028,7 @@ class Ortho4XP_Config(tk.Toplevel):
             self.v_["zone_list"].set(str(zone_list))
         # Apply changes to update global variables
         self.apply_changes("tile")
-        UI.vprint(0, f"Configuration loaded for tile at {lat} {lon}")
+        UI.vprint(0, f"Configuration loaded for tile at {lat}{lon}")
         f.close()
 
     def write_tile_cfg(self) -> None:
@@ -947,42 +1039,41 @@ class Ortho4XP_Config(tk.Toplevel):
             return 0
         custom_build_dir = self.parent.custom_build_dir_entry.get()
         build_dir = FNAMES.build_dir(lat, lon, custom_build_dir)
+        tile_cfg_file = os.path.join(
+            build_dir, "Ortho4XP_" + FNAMES.short_latlon(lat, lon) + ".cfg"
+        )
         try:
-            if not os.path.isdir(build_dir):
-                os.makedirs(build_dir)
-            f = open(
-                os.path.join(
-                    build_dir,
-                    "Ortho4XP_" + FNAMES.short_latlon(lat, lon) + ".cfg",
-                ),
-                "w",
-            )
+            os.makedirs(build_dir, exist_ok=True)
         except:
             self.popup("ERROR", "Cannot write into " + str(build_dir))
             return 0
-
-        # Required for when the config window is left open to make sure
-        # we retain any zone modifications
-        self.v_["zone_list"].set(str(eval("zone_list")))
-
-        # Apply changes to update global variables
-        self.apply_changes("tile")
-
-        # Get zones only for the tile
-        tile_zones = []
-        for zone in globals()["zone_list"]:
-            _zone_list = [int(coord) for coord in zone[0]]
-            _zone_list = set(_zone_list)
-            if lat in _zone_list and lon+1 in _zone_list:
-                tile_zones.append(zone)
-                _LOGGER.debug("Zones saved for tile at %s %s: %s", lat, lon, tile_zones)
-        for var in list_tile_vars:
-            if var == "zone_list":
-                f.write(var + "=" + str(tile_zones) + "\n")
-            else:
-                f.write(var + "=" + self.v_[var].get() + "\n")
-        f.close()
-        UI.vprint(1, f"Configuration saved for tile at {lat} {lon}")
+        # Make a backup of the existing tile config file
+        if os.path.isfile(tile_cfg_file):
+            tile_cfg_file_bak = tile_cfg_file + ".bak"
+            try:
+                os.replace(tile_cfg_file, tile_cfg_file_bak)
+            except:
+                pass
+        with open(tile_cfg_file, "w") as f:
+            # Required for when the config window is left open to make sure
+            # we retain any zone modifications
+            self.v_["zone_list"].set(str(globals()["zone_list"]))
+            # Apply changes to update global variables
+            self.apply_changes("tile")
+            # Get zones only for the tile
+            tile_zones = []
+            for zone in globals()["zone_list"]:
+                _zone_list = [int(coord) for coord in zone[0]]
+                _zone_list = set(_zone_list)
+                if lat in _zone_list and lon+1 in _zone_list:
+                    tile_zones.append(zone)
+                    _LOGGER.debug("Zones saved for tile at %s %s: %s", lat, lon, tile_zones)
+            for var in list_tile_vars:
+                if var == "zone_list":
+                    f.write(var + "=" + str(tile_zones) + "\n")
+                else:
+                    f.write(var + "=" + self.v_[var].get() + "\n")
+        UI.vprint(1, f"Configuration saved for tile at {lat}{lon}")
         return
 
     def reset_global_cfg(self) -> None:
@@ -993,6 +1084,28 @@ class Ortho4XP_Config(tk.Toplevel):
             self.v_[var].set(str(cfg_global_tile_vars[var]["default"]))
 
         UI.vprint(1, "Global tile settings reset to defaults.")
+
+    def load_backup_global_tile_cfg(self) -> None:
+        """Load backup global tile configuration settings."""
+        try:
+            with open(global_cfg_bak_file, "r") as f:
+                for line in f.readlines():
+                    line = line.strip()
+                    if not line or line[0] == "#":
+                        continue
+                    (var, value) = line.split("=")
+                    # Ignore list_app_vars
+                    if var in list_app_vars:
+                        continue
+                    var = global_prefix + var
+                    value = config_compatibility(value)
+                    self.v_[var].set(value)
+                # Apply changes to update global variables
+                self.apply_changes("tile")
+                UI.vprint(0, f"Backup configuration loaded for global tile settings.")
+        except FileNotFoundError:
+            messagebox.showinfo("Not found", "No backup global configuration found.")
+            return
 
     def write_global_cfg(self):
         """Write global configuration settings to Ortho4XP.cfg."""
@@ -1036,6 +1149,27 @@ class Ortho4XP_Config(tk.Toplevel):
             self.v_[var].set(str(cfg_app_vars[var]["default"]))
         UI.vprint(1, "Application settings reset to defaults.")
 
+    def load_backup_app_cfg(self) -> None:
+        """Load backup app configuration settings."""
+        try:
+            with open(global_cfg_bak_file, "r") as f:
+                for line in f.readlines():
+                    line = line.strip()
+                    if not line or line[0] == "#":
+                        continue
+                    (var, value) = line.split("=")
+                    # Ignore global tile vars
+                    if var in list_global_tile_vars:
+                        continue
+                    value = config_compatibility(value)
+                    self.v_[var].set(value)
+                # Apply changes to update global variables
+                self.apply_changes("tile")
+                UI.vprint(0, f"Backup configuration loaded for application settings.")
+        except FileNotFoundError:
+            messagebox.showinfo("Not found", "No backup application configuration found.")
+            return
+
     def write_app_cfg(self) -> None:
         """Save application settings to global configuration."""
         # Apply changes first to update global variables
@@ -1070,7 +1204,7 @@ class Ortho4XP_Config(tk.Toplevel):
 
     def apply_changes(self, tab: str) -> None:
         """
-        Apply changes to update global variables or cfg_config dictionary.
+        Apply changes to update global variables.
 
         :param str tab: "tile", "global" or "app" for each tab
         :return: None
@@ -1114,12 +1248,12 @@ class Ortho4XP_Config(tk.Toplevel):
                     + "\n* ".join(errors)
                 )
                 self.popup("ERROR", error_text)
-        else: # Tile and app tabs use self.v_ and global variables
+        else:
             if tab == "tile":
                 list_vars = list_tile_vars
                 # Make sure existing zones in global zone_list are retained
                 # and check for any duplicates before adding new zones
-                for zone in eval(self.v_["zone_list"].get()):
+                for zone in ast.literal_eval(self.v_["zone_list"].get()):
                     if zone not in globals()["zone_list"]:
                         globals()["zone_list"].append(zone)
             if tab == "app":
@@ -1259,7 +1393,7 @@ class Ortho4XP_Config(tk.Toplevel):
                         line.strip().split("=") for line in f if line.strip()
                     )
                     for var in list_global_tile_vars:
-                        # Config file has global_ prefix so we need to remove it
+                        # Config file does not have global_ prefix so we need to remove it
                         _var = var.replace(global_prefix, "")
 
                         tab_value = self.set_value_type(_var, self.v_[var].get())
@@ -1309,7 +1443,7 @@ class Ortho4XP_Config(tk.Toplevel):
                     f"Tile, Global, and Application Config tabs have unsaved changes.\n"
                 )
             # Appears to be an issue with macOS and using "Cancel" as sometimes it will present
-            # the messagebox twice. Does not happenw with "Yes/No" options.
+            # the messagebox twice. Also happens rarely with "Yes/No".
             response = messagebox.askyesnocancel(
                 "Unsaved Changes", f"{message}\nSave changes?", parent=self
             )
@@ -1325,7 +1459,8 @@ class Ortho4XP_Config(tk.Toplevel):
 
     def set_value_type(self, var: str, value) -> float | bool | str | list:
         """
-        Return value based on type in cfg_vars.
+        Return string based on type in cfg_vars except ints which
+        will be returned as floats since this is used for comparing values.
         
         :param str value: value to be converted.
         :return: value in type based on cfg_vars
@@ -1334,14 +1469,11 @@ class Ortho4XP_Config(tk.Toplevel):
         if cfg_vars[var]["type"] == int or cfg_vars[var]["type"] == float:
             return float(value)
         if cfg_vars[var]["type"] == bool:
-            if value == "True":
-                return True
-            if value == "False":
-                return False
+            return ast.literal_eval(value)
         if cfg_vars[var]["type"] == str:
             return str(value)
         if cfg_vars[var]["type"] == list:
-            return list(value)
+            return ast.literal_eval(value)
 
     def dict_to_cfg(self, file:str, cfg_dict: dict) -> None:
         """

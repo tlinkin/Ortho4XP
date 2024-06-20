@@ -1,3 +1,4 @@
+import logging
 import os
 import time
 import shutil
@@ -217,7 +218,7 @@ def build_all(tile):
 
 ################################################################################
 def build_tile_list(
-    tile, list_lat_lon, do_osm, do_mesh, do_mask, do_dsf, do_ovl, do_ptc
+    tile, list_lat_lon, do_osm, do_mesh, do_mask, do_dsf, do_ovl, override_cfg
 ):
     if UI.is_working:
         return 0
@@ -243,7 +244,9 @@ def build_tile_list(
             tile.lat, tile.lon, tile.custom_build_dir
         )
         tile.dem = None
-        if do_ptc:
+        if override_cfg:
+            tile.read_from_config(use_global=True)
+        else:
             tile.read_from_config()
         if do_osm or do_mesh or do_dsf:
             tile.make_dirs()
@@ -282,6 +285,16 @@ def build_tile_list(
     UI.lvprint(
         0, "Batch process completed in", UI.nicer_timer(time.time() - timer)
     )
+    if IMG.errors:
+        errors = ", ".join(IMG.errors)
+        UI.lvprint(
+            0,
+            (
+                "\nERROR: Parts of the following images could not be obtained "
+                "and have been filled with white: "
+                f"{errors}"
+            ),
+        )
     return 1
 
 ################################################################################
