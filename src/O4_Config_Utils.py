@@ -355,7 +355,7 @@ class Ortho4XP_Config(tk.Toplevel):
         """Update the tile configuration status message and widget states."""
         if self.parent.tile_cfg_exists.get():
             self.tile_cfg_msg.set(
-                f"Configuration loaded for " \
+                f"Tile configuration loaded for " \
                 f"{self.parent.lat.get()}{self.parent.lon.get()}"
             )
             state = "normal"
@@ -369,9 +369,9 @@ class Ortho4XP_Config(tk.Toplevel):
             self.btn_write_tile_cfg.config(state=state)
         else:
             self.tile_cfg_msg.set(
-                f"No tile configuration at " \
+                f"No tile configuration for " \
                 f"{self.parent.lat.get()}{self.parent.lon.get()}. " \
-                f"Using global config settings."
+                f"Using global configuration settings."
             )
             # Need to sync settings when tile build starts?
             # self.load_tile_cfg()

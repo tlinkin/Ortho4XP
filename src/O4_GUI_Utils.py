@@ -220,7 +220,7 @@ class Ortho4XP_GUI(tk.Tk):
         self.default_zl = tk.StringVar()
         self.default_zl.trace_add("write", self.update_zl)
         tk.Label(
-            self.frame_tile, anchor=W, text="Zoomlevel:", bg="light green"
+            self.frame_tile, anchor=W, text="Zoom Level:", bg="light green"
         ).grid(row=0, column=6, padx=5, pady=5, sticky=E + W)
         self.zl_combo = ttk.Combobox(
             self.frame_tile,
@@ -779,7 +779,7 @@ class Ortho4XP_Custom_ZL(tk.Toplevel):
         self.polyobj_list = []
 
         tk.Toplevel.__init__(self)
-        self.title("Preview / Custom zoomlevels")
+        self.title("Preview / Custom Zoom Levels")
         self.columnconfigure(1, weight=1)
         self.rowconfigure(0, weight=1)
 
@@ -844,7 +844,7 @@ class Ortho4XP_Custom_ZL(tk.Toplevel):
         row += 1
 
         tk.Label(
-            self.frame_left, anchor=W, text="Zoomlevel : ", bg="light green"
+            self.frame_left, anchor=W, text="Zoom Level : ", bg="light green"
         ).grid(row=row, column=0, padx=5, pady=3, sticky=W)
         self.zl_combo = ttk.Combobox(
             self.frame_left,
@@ -1360,7 +1360,7 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
 
     def __init__(self, parent, lat, lon):
         tk.Toplevel.__init__(self)
-        self.title("Tiles collection and management")
+        self.title("Tiles Collection and Management")
         self.columnconfigure(1, weight=1)
         self.rowconfigure(0, weight=1)
 
