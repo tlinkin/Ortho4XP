@@ -1,3 +1,4 @@
+import ast
 import logging
 import os
 import sys
@@ -168,6 +169,9 @@ class Ortho4XP_GUI(tk.Tk):
             row=1, column=0, columnspan=8, sticky=N + S + W + E
         )
 
+        # Track existance of tile configuration file for active tile
+        self.tile_cfg_exists = tk.BooleanVar()
+
         # Widgets instances and placement
         # First row (Tile data)
         self.lat = tk.StringVar()
@@ -216,7 +220,7 @@ class Ortho4XP_GUI(tk.Tk):
         self.default_zl = tk.StringVar()
         self.default_zl.trace_add("write", self.update_zl)
         tk.Label(
-            self.frame_tile, anchor=W, text="Zoomlevel:", bg="light green"
+            self.frame_tile, anchor=W, text="Zoom Level:", bg="light green"
         ).grid(row=0, column=6, padx=5, pady=5, sticky=E + W)
         self.zl_combo = ttk.Combobox(
             self.frame_tile,
@@ -424,21 +428,21 @@ class Ortho4XP_GUI(tk.Tk):
         """Load tile configuration on tile change."""
         # TODO: Implement config loading on tile change here instead of using select_tile
         # so we can catch if the tile is changed manually or with the mouse in the map view.
-        # Problem is right now this is being called if the lat or lon is changed, and if using
-        # the map, that is true so it gets called twice. Also, having issues with the lat/lon
-        # not being accurate when trying to implement here.
+        # Problem is right now this is being called if the lat or lon is changed so it 
+        # gets called twice. Also, having issues with the lat/lon not being accurate when
+        # trying to implement here.
         return
 
     def load_tile_cfg(self, lat: int, lon: int) -> None:
         """
         Load tile configuration settings for specified tile.
-        Used for loading a config file when the tile is changed.
+        Used for loading a config file when the tile is changed using the map view.
+        Does not execute when active tile changed using coordinate inputs.
 
         :param int lat: latitude in degrees (e.g., 35)
         :param int lon: longitude in degrees (e.g., -115)
         :return: None
         """
-        # Currently doesn't work if coords changed manually in the GUI.
         custom_build_dir = self.custom_build_dir_entry.get()
         build_dir = FNAMES.build_dir(lat, lon, custom_build_dir)
 
@@ -448,17 +452,11 @@ class Ortho4XP_GUI(tk.Tk):
             f = open(tile_cfg_file, "r")
             for line in f.readlines():
                 line = line.strip()
-                if not line:
-                    continue
-                if line[0] == "#":
+                if not line or line[0] == "#":
                     continue
                 try:
                     (var, value) = line.split("=")
-                    # compatibility with config files from version <= 1.20
-                    if value and value[0] in ('"', "'"):
-                        value = value[1:]
-                    if value and value[-1] in ('"', "'"):
-                        value = value[:-1]
+                    value = CFG.config_compatibility(value)
                     target = (
                         cfg_vars[var]["module"] + "." + var
                         if "module" in cfg_vars[var]
@@ -470,7 +468,7 @@ class Ortho4XP_GUI(tk.Tk):
                         cmd = target + "=cfg_vars['" + var + "']['type'](value)"
                     if var == "zone_list":
                         # Append zones from config to global zone_list but also check if it's a duplicate
-                        for zone in eval(value):
+                        for zone in ast.literal_eval(value):
                             if zone not in CFG.zone_list:
                                 CFG.zone_list.append(zone)
                         # Stop the loop here since we don't want to override the global zone_list which cmd will do
@@ -490,7 +488,8 @@ class Ortho4XP_GUI(tk.Tk):
                 # Update main window GUI values
                 self.default_website.set(CFG.default_website)
                 self.default_zl.set(CFG.default_zl)
-            UI.vprint(1, f"Configuration loaded for tile at {lat} {lon}")
+            self.tile_cfg_exists.set(True)
+            UI.vprint(1, f"Configuration loaded for tile at {lat}{lon}")
             f.close()
         else:
             for var in list_global_tile_vars:
@@ -503,6 +502,7 @@ class Ortho4XP_GUI(tk.Tk):
                 else:
                     cmd = _var + "=cfg_global_tile_vars['" + var + "']['type'](value)"
                 exec(cmd)
+            self.tile_cfg_exists.set(False)
         # Update config window tile tab values if it's open
         if self.config_window is not None and self.config_window.winfo_exists():
             self.load_tiles_config_interface_from_variables()
@@ -626,6 +626,14 @@ class Ortho4XP_GUI(tk.Tk):
         self.working_thread.start()
 
     def build_tile(self):
+        # Check for unsaved changes
+        if (
+            self.config_window is not None
+            and self.config_window.winfo_exists()
+        ):
+            response = self.config_window.check_unsaved_changes()
+            if response == "cancel":
+                return
         try:
             tile = self.tile_from_interface()
             tile.make_dirs()
@@ -639,6 +647,14 @@ class Ortho4XP_GUI(tk.Tk):
         self.working_thread.start()
 
     def build_all(self):
+        # Check for unsaved changes
+        if (
+            self.config_window is not None
+            and self.config_window.winfo_exists()
+        ):
+            response = self.config_window.check_unsaved_changes()
+            if response == "cancel":
+                return
         try:
             tile = self.tile_from_interface()
             tile.make_dirs()
@@ -763,7 +779,7 @@ class Ortho4XP_Custom_ZL(tk.Toplevel):
         self.polyobj_list = []
 
         tk.Toplevel.__init__(self)
-        self.title("Preview / Custom zoomlevels")
+        self.title("Preview / Custom Zoom Levels")
         self.columnconfigure(1, weight=1)
         self.rowconfigure(0, weight=1)
 
@@ -828,7 +844,7 @@ class Ortho4XP_Custom_ZL(tk.Toplevel):
         row += 1
 
         tk.Label(
-            self.frame_left, anchor=W, text="Zoomlevel : ", bg="light green"
+            self.frame_left, anchor=W, text="Zoom Level : ", bg="light green"
         ).grid(row=row, column=0, padx=5, pady=3, sticky=W)
         self.zl_combo = ttk.Combobox(
             self.frame_left,
@@ -1336,7 +1352,7 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
         "Draw water masks",
         "Build imagery/DSF",
         "Extract overlays",
-        "Read per tile cfg",
+        "Override tile configs",
     ]
 
     canvas_min_x = 900
@@ -1344,7 +1360,7 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
 
     def __init__(self, parent, lat, lon):
         tk.Toplevel.__init__(self)
-        self.title("Tiles collection and management")
+        self.title("Tiles Collection and Management")
         self.columnconfigure(1, weight=1)
         self.rowconfigure(0, weight=1)
 
@@ -1986,16 +2002,21 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
 
     def select_tile(self, event):
         """Set active tile."""
-        if self.parent.config_window is not None and self.parent.config_window.winfo_exists():
-            result = self.parent.config_window.check_unsaved_changes(select_tile=True)
-            if result == "cancel":
-                return
         x = self.canvas.canvasx(event.x)
         y = self.canvas.canvasy(event.y)
         (lat, lon) = [floor(t) for t in GEO.pix_to_wgs84(x, y, self.earthzl)]
         self.active_lat = lat
         self.active_lon = lon
         self.latlon.set(FNAMES.short_latlon(lat, lon))
+        if (
+            self.parent.config_window is not None
+            and self.parent.config_window.winfo_exists()
+            and not UI.is_working
+        ):
+            result = self.parent.config_window.check_unsaved_changes(select_tile=True)
+            if result == "cancel":
+                return
+        
         try:
             self.canvas.delete(self.active_tile)
         except:
@@ -2043,6 +2064,15 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
         return
 
     def batch_build(self):
+        # Check if config window is open and if unsaved changes exist
+        if (
+            self.parent.config_window is not None
+            and self.parent.config_window.winfo_exists()
+        ):
+            result = self.parent.config_window.check_unsaved_changes()
+            if result == "cancel":
+                return
+
         list_lat_lon = sorted(self.dico_tiles_todo.keys())
         if not list_lat_lon:
             UI.vprint(1, "Unable to batch build: No tiles selected.")
@@ -2061,7 +2091,7 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
             self.v_["Draw water masks"].get(),
             self.v_["Build imagery/DSF"].get(),
             self.v_["Extract overlays"].get(),
-            self.v_["Read per tile cfg"].get(),
+            self.v_["Override tile configs"].get(),
         ]
         threading.Thread(target=TILE.build_tile_list, args=args).start()
         return

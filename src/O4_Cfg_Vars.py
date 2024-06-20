@@ -381,6 +381,7 @@ list_vector_vars = [
     "clean_bad_geometries",
     "mesh_zl",
 ]
+
 list_mesh_vars = [
     "curvature_tol",
     "apt_curv_tol",
@@ -393,6 +394,7 @@ list_mesh_vars = [
     "water_smoothing",
     "iterate",
 ]
+
 list_mask_vars = [
     "mask_zl",
     "masks_width",
@@ -403,6 +405,7 @@ list_mask_vars = [
     "masks_use_DEM_too",
     "masks_custom_extent",
 ]
+
 list_dsf_vars = [
     "cover_airports_with_highres",
     "cover_extent",
@@ -418,6 +421,7 @@ list_dsf_vars = [
     "terrain_casts_shadows",
     "use_decal_on_terrain",
 ]
+
 list_other_vars = ["custom_dem", "fill_nodata"]
 
 list_tile_vars = (
@@ -448,6 +452,4 @@ list_global_dsf_vars = [global_prefix + item for item in list_dsf_vars]
 
 list_global_mask_vars = [global_prefix + item for item in list_mask_vars]
 
-list_global_cfg = (
-    list_app_vars + list_vector_vars + list_mesh_vars + list_mask_vars + list_dsf_vars
-)
+list_cfg_vars = list_tile_vars + list_global_tile_vars + list_app_vars

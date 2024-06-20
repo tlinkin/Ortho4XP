@@ -42,6 +42,7 @@ http_timeout = 10
 check_tms_response = False
 max_connect_retries = 10
 max_baddata_retries = 10
+errors = []
 
 user_agent_generic = (
     "Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0"
@@ -1580,6 +1581,7 @@ def download_jpeg_ortho(
             "could not be obtained ",
             "(even at lower ZL), it was filled with white there.",
         )
+        errors.append(file_name)
     if not os.path.exists(file_dir):
         os.makedirs(file_dir)
     try:
