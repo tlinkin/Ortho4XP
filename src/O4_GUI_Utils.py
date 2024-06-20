@@ -169,6 +169,9 @@ class Ortho4XP_GUI(tk.Tk):
             row=1, column=0, columnspan=8, sticky=N + S + W + E
         )
 
+        # Track existance of tile configuration file for active tile
+        self.tile_cfg_exists = tk.BooleanVar()
+
         # Widgets instances and placement
         # First row (Tile data)
         self.lat = tk.StringVar()
@@ -485,6 +488,7 @@ class Ortho4XP_GUI(tk.Tk):
                 # Update main window GUI values
                 self.default_website.set(CFG.default_website)
                 self.default_zl.set(CFG.default_zl)
+            self.tile_cfg_exists.set(True)
             UI.vprint(1, f"Configuration loaded for tile at {lat}{lon}")
             f.close()
         else:
@@ -498,6 +502,7 @@ class Ortho4XP_GUI(tk.Tk):
                 else:
                     cmd = _var + "=cfg_global_tile_vars['" + var + "']['type'](value)"
                 exec(cmd)
+            self.tile_cfg_exists.set(False)
         # Update config window tile tab values if it's open
         if self.config_window is not None and self.config_window.winfo_exists():
             self.load_tiles_config_interface_from_variables()
@@ -1347,7 +1352,7 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
         "Draw water masks",
         "Build imagery/DSF",
         "Extract overlays",
-        "Override tile config",
+        "Override tile configs",
     ]
 
     canvas_min_x = 900
@@ -2086,7 +2091,7 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
             self.v_["Draw water masks"].get(),
             self.v_["Build imagery/DSF"].get(),
             self.v_["Extract overlays"].get(),
-            self.v_["Override tile config"].get(),
+            self.v_["Override tile configs"].get(),
         ]
         threading.Thread(target=TILE.build_tile_list, args=args).start()
         return
