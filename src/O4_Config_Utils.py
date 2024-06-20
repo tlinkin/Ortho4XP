@@ -313,7 +313,7 @@ class Ortho4XP_Config(tk.Toplevel):
         self.parent = parent
 
         # Catch window close using operating system close button
-        self.protocol("WM_DELETE_WINDOW", self.check_unsaved_changes)
+        self.protocol("WM_DELETE_WINDOW", self.close_window)
 
         # Create a notebook which provides a tabbed interface
         self.notebook = ttk.Notebook(self)
