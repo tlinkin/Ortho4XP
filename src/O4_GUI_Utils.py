@@ -171,6 +171,7 @@ class Ortho4XP_GUI(tk.Tk):
 
         # Track existance of tile configuration file for active tile
         self.tile_cfg_exists = tk.BooleanVar()
+        self.tile_cfg_exists.trace_add("write", self.update_tile_cfg_status)
 
         # Widgets instances and placement
         # First row (Tile data)
@@ -506,6 +507,11 @@ class Ortho4XP_GUI(tk.Tk):
         # Update config window tile tab values if it's open
         if self.config_window is not None and self.config_window.winfo_exists():
             self.load_tiles_config_interface_from_variables()
+
+    def update_tile_cfg_status(self, *args) -> None:
+        """Update config window of tile_cfg_exist state."""
+        if self.config_window is not None and self.config_window.winfo_exists():
+            self.config_window.tile_cfg_status(*args)
 
     def load_tiles_config_interface_from_variables(self) -> None:
         """Load the configuration interface values for only the tile config tab."""

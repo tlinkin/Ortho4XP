@@ -337,7 +337,6 @@ class Ortho4XP_Config(tk.Toplevel):
             self.v_[item] = tk.StringVar()
 
         self.tile_cfg_msg = tk.StringVar()
-        self.parent.tile_cfg_exists.trace_add("write", self.tile_cfg_status)
 
         # Set values for Tkinter objects for GUI display
         self.v_["default_website"] = self.parent.default_website
@@ -373,8 +372,6 @@ class Ortho4XP_Config(tk.Toplevel):
                 f"{self.parent.lat.get()}{self.parent.lon.get()}. " \
                 f"Using global configuration settings."
             )
-            # Need to sync settings when tile build starts?
-            # self.load_tile_cfg()
             state = "disabled"
             for _, value in self.tile_entry_.items():                
                 value.config(state=state)
