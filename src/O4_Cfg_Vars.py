@@ -55,8 +55,8 @@ cfg_app_vars = {
     },
     "http_timeout": {
         "module": "IMG",
-        "type": int,
-        "default": 10,
+        "type": float,
+        "default": 10.0,
         "hint": "Delay before we decide that a http request is timed out.",
     },
     "max_connect_retries": {
@@ -216,7 +216,7 @@ cfg_tile_vars = {
         "hint": "The zoomlevel at which the (sea) water masks are built. Masks are used for alpha channel, and this channel usually requires less resolution than the RGB ones, the reason for this (VRAM saving) parameter. If the coastline and elevation data are very detailed, it might be interesting to lift this parameter up so that the masks can reproduce this complexity.",
     },
     "masks_width": {
-        "type": int,
+        "type": list,
         "default": 100,
         "hint": "Maximum extent of the masks perpendicularly to the coastline (rough definition). NOTE: The value is now in meters, it used to be in ZL14 pixel size in earlier verions, the scale is roughly one to ten between both.",
     },
@@ -316,7 +316,7 @@ cfg_tile_vars = {
         "short_name": "terrain_casts_shadow",
     },
     "overlay_lod": {
-        "type": int,
+        "type": float,
         "default": 25000,
         "hint": "Distance until which overlay imageries (that is orthophotos over water) are drawn. Lower distances have a positive impact on frame rate and VRAM usage, and IFR flyers will probably need a higher value than VFR ones.",
     },
