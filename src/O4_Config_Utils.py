@@ -1593,7 +1593,9 @@ class Ortho4XP_Config(tk.Toplevel):
 
     def close_window(self) -> None:
         """Close the configuration window."""
-        self.check_unsaved_changes()
+        result = self.check_unsaved_changes()
+        if result == "cancel":
+            return
         self.destroy()
 
     def popup(self, header: str, input_text: str) -> None:
