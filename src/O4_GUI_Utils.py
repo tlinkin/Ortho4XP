@@ -746,7 +746,16 @@ class Ortho4XP_GUI(tk.Tk):
     def set_red_flag(self):
         UI.red_flag = True
 
-    def exit_prg(self):
+    def exit_prg(self) -> None:
+        """Close the Ortho4XP application."""
+        if (
+            self.config_window is not None
+            and self.config_window.winfo_exists()
+            and not UI.is_working
+        ):
+            result = self.config_window.check_unsaved_changes(select_tile=True)
+            if result == "cancel":
+                return        
         try:
             f = open(FNAMES.resource_path(".last_gui_params.txt"), "w")
             f.write(
