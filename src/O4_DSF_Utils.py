@@ -365,6 +365,12 @@ def extract_elevation_and_bathymetry_data(lat, lon):
         FNAMES.long_latlon(lat, lon) + ".dsf",
     )
     if not os.path.exists(global_scenery_dsf):
+        global_scenery_dsf = os.path.join(
+        OVL.custom_overlay_src_alternate,
+        "Earth nav data",
+        FNAMES.long_latlon(lat, lon) + ".dsf",
+        )
+    if not os.path.exists(global_scenery_dsf):
         UI.exit_message_and_bottom_line(
             "   ERROR: file ",
             global_scenery_dsf,
