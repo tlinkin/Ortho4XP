@@ -205,7 +205,7 @@ def build_overlay(lat, lon):
     dest_dir = os.path.join(
         FNAMES.Overlay_dir, "Earth nav data", FNAMES.round_latlon(lat, lon)
     )
-    UI.vprint(1, "-> Coping the final overlay DSF in " + dest_dir)
+    UI.vprint(1, "-> Copying the final overlay DSF in " + dest_dir)
     if not os.path.exists(dest_dir):
         try:
             os.makedirs(dest_dir)

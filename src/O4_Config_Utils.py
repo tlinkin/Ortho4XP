@@ -267,10 +267,14 @@ class Tile:
             f = open(config_file, "w")
             for var in list_tile_vars:
                 tile_zones = []
+                if self.lat < 0:
+                    _lat = self.lat + 1
+                if self.lon < 0:
+                    _lon = self.lon + 1
                 for zone in globals()["zone_list"]:
                     _zone_list = [int(coord) for coord in zone[0]]
                     _zone_list = set(_zone_list)
-                    if self.lat in _zone_list and self.lon+1 in _zone_list:
+                    if _lat in _zone_list and _lon in _zone_list:
                         tile_zones.append(zone)
                         _LOGGER.debug("Zones in tile found: %s", tile_zones)
                 if var == "zone_list":
@@ -355,7 +359,7 @@ class Ortho4XP_Config(tk.Toplevel):
         if self.parent.tile_cfg_exists.get():
             self.tile_cfg_msg.set(
                 f"Tile configuration loaded for " \
-                f"{self.parent.lat.get()}{self.parent.lon.get()}"
+                f"{self.parent.lat.get()} {self.parent.lon.get()}"
             )
             state = "normal"
             for _, value in self.tile_entry_.items():
@@ -955,6 +959,10 @@ class Ortho4XP_Config(tk.Toplevel):
             return 0
         # Find all the zones for the active tile
         tile_zones = []
+        if lat < 0:
+            lat = lat + 1
+        if lon < 0:
+            lon = lon + 1
         for zone in globals()["zone_list"]:
             _zone_list = [int(coord) for coord in zone[0]]
             _zone_list = set(_zone_list)
@@ -1029,7 +1037,7 @@ class Ortho4XP_Config(tk.Toplevel):
                     pass
         # Apply changes to update global variables
         self.apply_changes("tile")
-        UI.vprint(0, f"Backup configuration loaded for tile at {lat}{lon}")
+        UI.vprint(0, f"Backup configuration loaded for tile at {lat} {lon}")
         f.close()
 
     def load_tile_cfg(self) -> None:
@@ -1081,7 +1089,7 @@ class Ortho4XP_Config(tk.Toplevel):
         self.parent.tile_cfg_exists.set(True)
         # Apply changes to update global variables
         self.apply_changes("tile")
-        UI.vprint(0, f"Configuration loaded for tile at {lat}{lon}")
+        UI.vprint(0, f"Configuration loaded for tile at {lat} {lon}")
         f.close()
 
     def write_tile_cfg(self) -> None:
@@ -1115,10 +1123,14 @@ class Ortho4XP_Config(tk.Toplevel):
             self.apply_changes("tile")
             # Get zones only for the tile
             tile_zones = []
+            if lat < 0:
+                lat = lat + 1
+            if lon < 0:
+                lon = lon + 1
             for zone in globals()["zone_list"]:
                 _zone_list = [int(coord) for coord in zone[0]]
                 _zone_list = set(_zone_list)
-                if lat in _zone_list and lon+1 in _zone_list:
+                if lat in _zone_list and lon in _zone_list:
                     tile_zones.append(zone)
                     _LOGGER.debug("Zones saved for tile at %s %s: %s", lat, lon, tile_zones)
             for var in list_tile_vars:

@@ -490,7 +490,7 @@ class Ortho4XP_GUI(tk.Tk):
                 self.default_website.set(CFG.default_website)
                 self.default_zl.set(CFG.default_zl)
             self.tile_cfg_exists.set(True)
-            UI.vprint(1, f"Configuration loaded for tile at {lat}{lon}")
+            UI.vprint(1, f"Configuration loaded for tile at {lat} {lon}")
             f.close()
         else:
             for var in list_global_tile_vars:
@@ -558,7 +558,21 @@ class Ortho4XP_GUI(tk.Tk):
             return (48, -6)
         return (lat, lon)
 
-    def tile_from_interface(self):
+    def tile_from_interface(self) -> CFG.Tile | bool:
+        """
+        Create a Tile object for building a tile from the main window.
+
+        :return: Tile object or False
+        ;rtype: Tile object or False
+        """
+        # Check for unsaved changes
+        if (
+            self.config_window is not None
+            and self.config_window.winfo_exists()
+        ):
+            response = self.config_window.check_unsaved_changes()
+            if response == "cancel":
+                return False
         try:
             (lat, lon) = self.get_lat_lon()
             return CFG.Tile(lat, lon, str(self.custom_build_dir.get()))
@@ -568,7 +582,10 @@ class Ortho4XP_GUI(tk.Tk):
     def build_poly_file(self):
         try:
             tile = self.tile_from_interface()
-            tile.make_dirs()
+            if tile:
+                tile.make_dirs()
+            else:
+                return
         except Exception as e:
             UI.vprint(1, "Process aborted.\n")
             _LOGGER.exception(e)
@@ -581,7 +598,10 @@ class Ortho4XP_GUI(tk.Tk):
     def build_mesh(self, event):
         try:
             tile = self.tile_from_interface()
-            tile.make_dirs()
+            if tile:
+                tile.make_dirs()
+            else:
+                return
         except Exception as e:
             UI.vprint(1, "Process aborted.\n")
             _LOGGER.exception("Exception on build_mesh")
@@ -594,7 +614,10 @@ class Ortho4XP_GUI(tk.Tk):
     def sort_mesh(self, event):
         try:
             tile = self.tile_from_interface()
-            tile.make_dirs()
+            if tile:
+                tile.make_dirs()
+            else:
+                return
         except Exception as e:
             UI.vprint(1, "Process aborted.\n")
             _LOGGER.exception("Exception on sort_mesh")
@@ -607,7 +630,10 @@ class Ortho4XP_GUI(tk.Tk):
     def community_mesh(self, event):
         try:
             tile = self.tile_from_interface()
-            tile.make_dirs()
+            if tile:
+                tile.make_dirs()
+            else:
+                return
         except Exception as e:
             UI.vprint(1, "Process aborted.\n")
             _LOGGER.exception("Exception on community_mesh")
@@ -621,7 +647,10 @@ class Ortho4XP_GUI(tk.Tk):
         for_imagery = "Shift" in str(event) or "shift" in str(event)
         try:
             tile = self.tile_from_interface()
-            tile.make_dirs()
+            if tile:
+                tile.make_dirs()
+            else:
+                return
         except Exception as e:
             UI.vprint(1, "Process aborted.\n")
             _LOGGER.exception(e)
@@ -632,17 +661,12 @@ class Ortho4XP_GUI(tk.Tk):
         self.working_thread.start()
 
     def build_tile(self):
-        # Check for unsaved changes
-        if (
-            self.config_window is not None
-            and self.config_window.winfo_exists()
-        ):
-            response = self.config_window.check_unsaved_changes()
-            if response == "cancel":
-                return
         try:
             tile = self.tile_from_interface()
-            tile.make_dirs()
+            if tile:
+                tile.make_dirs()
+            else:
+                return
         except Exception as e:
             UI.vprint(1, "Process aborted.\n")
             _LOGGER.exception(e)
@@ -663,7 +687,10 @@ class Ortho4XP_GUI(tk.Tk):
                 return
         try:
             tile = self.tile_from_interface()
-            tile.make_dirs()
+            if tile:
+                tile.make_dirs()
+            else:
+                return
         except Exception as e:
             UI.vprint(1, "Process aborted.\n")
             _LOGGER.exception(e)
