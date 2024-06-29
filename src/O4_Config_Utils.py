@@ -267,14 +267,16 @@ class Tile:
             f = open(config_file, "w")
             for var in list_tile_vars:
                 tile_zones = []
-                if self.lat < 0:
-                    _lat = self.lat + 1
-                if self.lon < 0:
-                    _lon = self.lon + 1
+                lat = self.lat
+                lon = self.lon
+                if lat < 0:
+                    lat = lat + 1
+                if lon < 0:
+                    lon = lon + 1
                 for zone in globals()["zone_list"]:
                     _zone_list = [int(coord) for coord in zone[0]]
                     _zone_list = set(_zone_list)
-                    if _lat in _zone_list and _lon in _zone_list:
+                    if lat in _zone_list and lon in _zone_list:
                         tile_zones.append(zone)
                         _LOGGER.debug("Zones in tile found: %s", tile_zones)
                 if var == "zone_list":
@@ -1140,7 +1142,7 @@ class Ortho4XP_Config(tk.Toplevel):
                     f.write(var + "=" + self.v_[var].get() + "\n")
         self.load_tile_cfg()
         self.tile_cfg_status()
-        UI.vprint(1, f"Configuration saved for tile at {lat}{lon}")
+        UI.vprint(1, f"Configuration saved for tile at {lat} {lon}")
         return
 
     def reset_global_cfg(self) -> None:
