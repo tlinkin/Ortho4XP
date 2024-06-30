@@ -1,7 +1,7 @@
 # Ortho4XP
 ![example](https://github.com/shred86/Ortho4XP/assets/32663154/f06ebfe5-ba1d-4f05-9439-8e569bd99ef5)
 
-Ortho4XP is a scenery generation tool for X-Plane. It creates the scenery base mesh and texture layer using external data and orthophoto sources.
+Ortho4XP is a scenery generation tool for [X-Plane](https://www.x-plane.com). It creates the scenery base mesh and texture layer using external data and orthophoto sources.
 
 This is a forked version of [Ortho4XP](https://github.com/oscarpilote/Ortho4XP) developed by [@oscarpilote](https://github.com/oscarpilote) which includes some updates, fixes and documentation. The official version is infrequently updated which is the reason I created this forked version to provide quicker updates and documentation.
 
@@ -16,6 +16,7 @@ The specific changes in this forked version:
 * "Read per tile cfg" removed and a "Override tile cfg" option added. This override setting allows you to force using the global configuration setting on all tiles, overriding any existing tile configurations.
 * Erased cached data feature works like batch building tiles now, meaning Shift-Click (red rectangle) to select tiles, choose deletion options, and click "Batch Delete". The batch delete has no effect on the active tile selection (yellow rectangle).
 * Display asterisk next to each tile zoom level number in the Tiles and configuration window if custom zoom levels have been specified.
+* Added ability to create a symlink to the yOrtho4XP_Overlays folder by pressing the "O" key in the Tiles Collection and Management window.
 
 #### Config
 * Ortho4XP Config window is now separated into three tabs: Tile Config, Global Config, and Application Config. 
@@ -27,7 +28,7 @@ The specific changes in this forked version:
 * "Load Backup Cfg" buttons added to the Tile, Global, and Application Config tabs which loads settings from a backup config file (if available).
 * Added ability to set an alternate `custom_overlay_src` directory to resolve an issue for some users. The default X-Plane scenery files are split up between `/X-Plane 12/Global Scenery/X-Plane Global Scenery` and `/X-Plane 12/Global Scenery/X-Plane Demo Areas`. So if you set `custom_overlay_src` to the first directory and try to batch build a bunch of tiles, you might get an error that the .dsf file can't be found if it's a location where the .dsf files are located in the second directory.
 * The `custom_dem` and `fill_nodata` settings are now saved to the global configuration.
-* Prompt user if attempting to close the config window with unsaved changes.
+* Prompt user if attempting to close the application or config window with unsaved changes.
 * Prompt user if attempting to change the active tile with unsaved changes on the Tile Tab in the config window.
 * Prompt user if attempting to build tiles with unsaved changes in the config window.
 * Backup of the tile configuration is created when using the "Save Tile Config" button (previously was only during a tile build process).
@@ -46,6 +47,7 @@ The specific changes in this forked version:
 * Fixed zones being saved to tile configuration that were outside of the tile location.
 * Fixed a bug where symlinks weren't automatically deleted if you used the Erased cached data - Tile (whole) option.
 * Fixed a bug if you created zones on a tile then clicked "Apply" (which no longer exists as a button) before saving the tile config, it would delete your zones.
+* Fix Viewfinderpanorama elevation source for certain regions of the world.
 * Corrected a few typos in setting descriptions.
 
 

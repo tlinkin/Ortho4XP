@@ -1664,7 +1664,7 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
 
     def add_overlay_symlink(self, *args) -> None:
         """Add/remove symlink for overlays to custom_scenery_dir."""
-        if CFG.custom_scenery_dir == "":
+        if not CFG.custom_scenery_dir:
             UI.vprint(1, "Custom Scenery directory not set.")
             return
         link = os.path.join(CFG.custom_scenery_dir, "yOrtho4XP_Overlays")
