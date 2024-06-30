@@ -988,8 +988,8 @@ class Ortho4XP_Custom_ZL(tk.Toplevel):
         row += 1
         tk.Label(
             self.frame_left,
-            text="Ctrl+B1 : add texture\nShift+B1: add zone point\n" + \
-                 "Ctrl+B2 : delete zone",
+            text="Ctrl+B1 : Add texture\nShift+B1: Add zone point\n" + \
+                 "Ctrl+B2 : Delete zone",
             bg="light green",
             justify=LEFT,
         ).grid(row=row, column=0, padx=5, pady=20, sticky=N + S + E + W)
@@ -1504,10 +1504,12 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
         row +=1
         tk.Label(
             self.frame_left,
-            text="Shortcuts :\n-----------------\nB2-press+hold: move map\n" + \
-                 "B1-double-click: select active\n" + \
-                 "Shift+B1: select multiple tiles\nCtrl+B1: link in Custom Scenery",
-            bg="light green"
+            text="B2-click+hold: Move map\n" + \
+                 "B1-double-click: Select active\n" + \
+                 "Shift+B1: Select multiple tiles\nCtrl+B1: Link in Custom Scenery\n" + \
+                 "O: Link overlays in Custom Scenery",
+            bg="light green",
+            justify=LEFT
         ).grid(row=row, column=0, padx=0, pady=5, sticky=N + S + E + W)
         row += 1
         # Refresh window
@@ -1548,6 +1550,7 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
         self.canvas.bind("<Double-Button-1>", self.select_tile)
         self.canvas.bind("<Shift-ButtonPress-1>", self.add_tile)
         self.canvas.bind("<Control-ButtonPress-1>", self.toggle_to_custom)
+        self.canvas.bind("o", self.add_overlay_symlink)
         self.canvas.focus_set()
         self.draw_canvas(self.nx0, self.ny0)
         self.active_lat = lat
@@ -1659,6 +1662,32 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
         except:
             pass
 
+    def add_overlay_symlink(self, *args) -> None:
+        """Add/remove symlink for overlays to custom_scenery_dir."""
+        if CFG.custom_scenery_dir == "":
+            UI.vprint(1, "Custom Scenery directory not set.")
+            return
+        link = os.path.join(CFG.custom_scenery_dir, "yOrtho4XP_Overlays")
+        # Remove symlink if it already exists
+        if os.path.isdir(link) and os.path.samefile(
+            os.path.realpath(link), FNAMES.Overlay_dir
+        ):
+            os.remove(link)
+            UI.vprint(
+                1,
+                f"yOrtho4XP_Overlays link removed from: {CFG.custom_scenery_dir}",
+            )
+            return
+        # Add symlink if it doesn't exist
+        if ("dar" in sys.platform) or ("win" not in sys.platform):
+            # Mac and Linux
+            os.system("ln -s " + ' "' + FNAMES.Overlay_dir + '" "' + link + '"')
+        else:
+            os.system('MKLINK /J "' + link + '" "' + FNAMES.Overlay_dir + '"')
+        UI.vprint(
+            1, f"yOrtho4XP_Overlays link added to: {CFG.custom_scenery_dir}"
+        )
+
     def set_working_dir(self):
         self.custom_build_dir = self.parent.custom_build_dir.get()
         self.grouped = (
@@ -1701,7 +1730,7 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
                         lon = int(dir_name.split("XP_")[1][3:7])
                     except:
                         continue
-                    # With the enlarged accepetance rule for directory name 
+                    # With the enlarged accepetance rule for directory name
                     # there might be more than one tile for the same (lat,lon),
                     # we skip all but the first encountered.
                     if (lat, lon) in self.dico_tiles_done:
@@ -2058,7 +2087,7 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
             result = self.parent.config_window.check_unsaved_changes(select_tile=True)
             if result == "cancel":
                 return
-        
+
         try:
             self.canvas.delete(self.active_tile)
         except:
