@@ -41,13 +41,16 @@ The specific changes in this forked version:
 * Includes Windows Python dependency wheel files for gdal and scikit-fmm.
 * Update and pin requirements to latest working versions.
 * Adds a bash script to automate the setup process for those that prefer not to use the packaged version.
+* Removed Maxar and Mapbox image providers which are no longer publically available.
 
 #### Bug Fixes
 * If one-click symlink feature is used, added removal of symlink when "Erase cached data" "Tile (whole)" option is used.
 * Fixed zones being saved to tile configuration that were outside of the tile location.
 * Fixed a bug where symlinks weren't automatically deleted if you used the Erased cached data - Tile (whole) option.
 * Fixed a bug if you created zones on a tile then clicked "Apply" (which no longer exists as a button) before saving the tile config, it would delete your zones.
-* Fix Viewfinderpanorama elevation source for certain regions of the world.
+* Fixed Viewfinderpanorama elevation source for certain regions of the world.
+* Fixed Here (https://wego.here.com/) image provider API key.
+* Fixed issue in certain coastal regions where .dds files were being deleted with cleaning_level set to 2 or higher.
 * Corrected a few typos in setting descriptions.
 
 
