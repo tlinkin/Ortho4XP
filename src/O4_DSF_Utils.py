@@ -1,21 +1,22 @@
+import array
+import hashlib
+import io
+import numpy
 import os
 import pickle
 import shutil
-import io
-from math import floor, ceil
-import array
-import numpy
-from PIL import Image, ImageDraw
-from collections import defaultdict
 import struct
-import hashlib
+from collections import defaultdict
+from math import ceil, floor
+from PIL import Image, ImageDraw
+import subprocess
+import O4_Bathymetry as BATHY
 import O4_File_Names as FNAMES
 import O4_Geo_Utils as GEO
 import O4_Mask_Utils as MASK
-import O4_UI_Utils as UI
-import O4_Overlay_Utils as OVL
 import O4_Mesh_Utils as MESH
-import O4_Bathymetry as BATHY
+import O4_Overlay_Utils as OVL
+import O4_UI_Utils as UI
 
 quad_init_level = 3
 quad_capacity_high = 50000
@@ -397,9 +398,7 @@ def extract_elevation_and_bathymetry_data(lat, lon):
     if dsfid == "7z":
         UI.vprint(2, "     The original DSF is a 7z archive, uncompressing...")
         os.replace(tmp_file, tmp_file + ".7z")
-        os.system(
-            OVL.unzip_cmd + " e -o" + FNAMES.Tmp_dir + ' "' + tmp_file + '.7z"'
-        )
+        subprocess.run([OVL.unzip_cmd, "e", f"-o{FNAMES.Tmp_dir}", f"{tmp_file}.7z"])
         os.remove(tmp_file + '.7z')
     file_len = os.path.getsize(tmp_file)
     f = open(tmp_file, "rb")
