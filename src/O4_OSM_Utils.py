@@ -12,9 +12,10 @@ import O4_File_Names as FNAMES
 overpass_servers = {
     "DE": "https://overpass-api.de/api/interpreter",
     "KU": "https://overpass.kumi.systems/api/interpreter",
-    "RU": "https://overpass.osm.rambler.ru/cgi/interpreter",
+    "RU": "https://overpass.openstreetmap.ru/api/interpreter",
 }
-overpass_server_choice = "DE"
+# KU server does not rate limit as of 2024-07-08
+overpass_server_choice = "KU"
 max_osm_tentatives = 8
 
 ################################################################################
