@@ -16,13 +16,13 @@ custom_overlay_src = ""
 custom_overlay_src_alternate = ""
 
 if "dar" in sys.platform:
-    unzip_cmd = "7z "
+    unzip_cmd = "7z"
     dsftool_cmd = os.path.join(FNAMES.Utils_dir, "mac", "DSFTool ")
 elif "win" in sys.platform:
-    unzip_cmd = os.path.join(FNAMES.Utils_dir, "win", "7z.exe ")
+    unzip_cmd = os.path.join(FNAMES.Utils_dir, "win", "7z.exe")
     dsftool_cmd = os.path.join(FNAMES.Utils_dir, "win", "DSFTool.exe ")
 else:
-    unzip_cmd = "7z "
+    unzip_cmd = "7z"
     dsftool_cmd = os.path.join(FNAMES.Utils_dir, "lin", "DSFTool ")
 
 ################################################################################
@@ -75,14 +75,7 @@ def build_overlay(lat, lon):
     if dsfid == "7z":
         UI.vprint(1, "-> The original DSF is a 7z archive, uncompressing...")
         os.replace(file_to_sniff_loc, file_to_sniff_loc + ".7z")
-        os.system(
-            unzip_cmd
-            + " e -o"
-            + FNAMES.Tmp_dir
-            + ' "'
-            + file_to_sniff_loc
-            + '.7z"'
-        )
+        subprocess.run([unzip_cmd, "e", f"-o{FNAMES.Tmp_dir}", f"{file_to_sniff_loc}.7z"])
         os.remove(file_to_sniff_loc + ".7z")
     UI.vprint(1, "-> Converting the copy to text format")
     dsfconvertcmd = [
