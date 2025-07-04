@@ -266,7 +266,15 @@ def build_tile_list(
                 UI.exit_message_and_bottom_line()
                 return 0
         if do_dsf:
+            tile_coords = FNAMES.short_latlon(lat, lon)
             build_tile(tile)
+            _count = 0
+            if tile_coords in IMG.incomplete_imgs and _count < 1:
+                UI.lvprint(1, f"Attempting to rebuild textures with white squares: {IMG.incomplete_imgs}")
+                delete_incomplete_imgs(IMG.incomplete_imgs)
+                build_tile(tile)
+                _count += 1
+
             if UI.red_flag:
                 UI.exit_message_and_bottom_line()
                 return 0
@@ -285,14 +293,13 @@ def build_tile_list(
     UI.lvprint(
         0, "Batch process completed in", UI.nicer_timer(time.time() - timer)
     )
-    if IMG.errors:
-        errors = ", ".join(IMG.errors)
+    if IMG.incomplete_imgs:
         UI.lvprint(
             0,
             (
                 "\nERROR: Parts of the following images could not be obtained "
                 "and have been filled with white: "
-                f"{errors}"
+                f"{IMG.incomplete_imgs}"
             ),
         )
     return 1
@@ -318,3 +325,30 @@ def remove_unwanted_textures(tile):
                 os.remove(os.path.join(tile.build_dir, "textures", f))
             except:
                 pass
+
+def delete_incomplete_imgs(errors):
+    """Delete orthophoto jpegs and dds that have white squares."""
+    for file_name_list in errors.values():
+        for file_name in file_name_list:
+            # Delete the orthophoto jpegs with white squares
+            for root, _, files in os.walk(FNAMES.Imagery_dir):
+                if file_name in files:
+                    file_path = os.path.join(root, file_name)
+                    os.remove(file_path)
+                    UI.lvprint(1, f"Deleted: {file_name}")
+                    # # Remove from errors which is the IMG.incomplete_imgs dictionary
+                    UI.lvprint(1, file_name_list)
+                    # file_name_list.remove(file_name)
+
+            # Delete the tile dds textures with white squares
+            # file_name has .jpg extension, so create a variable for .dds extension as well
+            base_name, _ = os.path.splitext(file_name)
+            file_name_dds = f"{base_name}.dds"
+
+            for root, _, files in os.walk(FNAMES.Tile_dir):
+                if file_name_dds in files:
+                    file_path = os.path.join(root, file_name_dds)
+                    os.remove(file_path)
+                    UI.lvprint(1, f"Deleted: {file_name_dds}")
+    
+    IMG.incomplete_imgs = {}
