@@ -1069,21 +1069,14 @@ class Ortho4XP_Custom_ZL(tk.Toplevel):
             0, 0, anchor=NW, image=self.photo
         )
         self.canvas.config(scrollregion=self.canvas.bbox(ALL))
-        # It seems something changed with macOS 15.1 as this no>
-        # longer seems to be needed for macOS - <ButtonPress-3>
-        # appears to be the "right click" function on a mouse.
-        # if "dar" in sys.platform:
-        #     self.canvas.bind("<ButtonPress-2>", self.scroll_start)
-        #     self.canvas.bind("<B2-Motion>", self.scroll_move)
-        #     self.canvas.bind("<Control-ButtonPress-2>", self.delPol)
-        # else:
-        #     self.canvas.bind("<ButtonPress-3>", self.scroll_start)
-        #     self.canvas.bind("<B3-Motion>", self.scroll_move)
-        #     self.canvas.bind("<Control-ButtonPress-3>", self.delPol)
-
-        self.canvas.bind("<ButtonPress-3>", self.scroll_start)
-        self.canvas.bind("<B3-Motion>", self.scroll_move)
-        self.canvas.bind("<Control-ButtonPress-3>", self.delPol)
+        if "dar" in sys.platform:
+            self.canvas.bind("<ButtonPress-2>", self.scroll_start)
+            self.canvas.bind("<B2-Motion>", self.scroll_move)
+            self.canvas.bind("<Control-ButtonPress-2>", self.delPol)
+        else:
+            self.canvas.bind("<ButtonPress-3>", self.scroll_start)
+            self.canvas.bind("<B3-Motion>", self.scroll_move)
+            self.canvas.bind("<Control-ButtonPress-3>", self.delPol)
         self.canvas.bind(
             "<ButtonPress-1>", lambda event: self.canvas.focus_set()
         )
@@ -1548,17 +1541,12 @@ class Ortho4XP_Earth_Preview(tk.Toplevel):
         self.canvas.yview_moveto(y0 / self.resolution)
         self.nx0 = int((8 * x0) // self.resolution)
         self.ny0 = int((8 * y0) // self.resolution)
-        # It seems something changed with macOS 15.1 as this no>
-        # longer seems to be needed for macOS - <ButtonPress-3>
-        # appears to be the "right click" function on a mouse.
-        # if "dar" in sys.platform:
-        #     self.canvas.bind("<ButtonPress-2>", self.scroll_start)
-        #     self.canvas.bind("<B2-Motion>", self.scroll_move)
-        # else:
-            # self.canvas.bind("<ButtonPress-3>", self.scroll_start)
-            # self.canvas.bind("<B3-Motion>", self.scroll_move)
-        self.canvas.bind("<ButtonPress-3>", self.scroll_start)
-        self.canvas.bind("<B3-Motion>", self.scroll_move)
+        if "dar" in sys.platform:
+            self.canvas.bind("<ButtonPress-2>", self.scroll_start)
+            self.canvas.bind("<B2-Motion>", self.scroll_move)
+        else:
+            self.canvas.bind("<ButtonPress-3>", self.scroll_start)
+            self.canvas.bind("<B3-Motion>", self.scroll_move)
         self.canvas.bind("<Double-Button-1>", self.select_tile)
         self.canvas.bind("<Shift-ButtonPress-1>", self.add_tile)
         self.canvas.bind("<Control-ButtonPress-1>", self.toggle_to_custom)
