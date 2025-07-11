@@ -161,7 +161,7 @@ def build_tile(tile):
     try:
         os.replace(dsf_file_name + ".tmp", dsf_file_name)
     except:
-        UI.vprint(0, "ERROR : could not rename DSF file, tile is not actived.")
+        UI.vprint(0, "ERROR : could not rename DSF file, tile is not active.")
     if UI.red_flag:
         UI.exit_message_and_bottom_line()
         return 0

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import sys
 import os
+from pyproj import datadir
 Ortho4XP_dir='..' if getattr(sys,'frozen',False) else '.'
 sys.path.append(os.path.join(Ortho4XP_dir,'src'))
 
@@ -14,6 +15,15 @@ import O4_Tile_Utils as TILE
 import O4_GUI_Utils as GUI
 import O4_Config_Utils as CFG  # CFG imported last because it can modify other modules variables
 
+# Check if running as a PyInstaller bundle and set PROJ_DATA environment
+if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+    base_path = sys._MEIPASS
+    relative_proj_path = os.path.join("pyproj", "proj_dir", "share", "proj")
+    lib_path = os.path.join(sys._MEIPASS, "_internal")
+    os.environ["DYLD_LIBRARY_PATH"] = lib_path + ":" + os.environ.get("DYLD_LIBRARY_PATH", "")
+    proj_data_path = os.path.join(base_path, relative_proj_path)
+    os.environ["PROJ_DATA"] = proj_data_path
+    datadir.set_data_dir(proj_data_path)
 
 cmd_line="USAGE: Ortho4XP.py lat lon imagery zl (won't read a tile config)\n  OR:  Ortho4XP.py lat lon (with existing tile config file)"
 
