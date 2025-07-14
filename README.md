@@ -32,16 +32,24 @@ The specific changes in this forked version:
 * Prompt user if attempting to change the active tile with unsaved changes on the Tile Tab in the config window.
 * Prompt user if attempting to build tiles with unsaved changes in the config window.
 * Backup of the tile configuration is created when using the "Save Tile Config" button (previously was only during a tile build process).
+* Default `imprint_mask_to_dds` to `False` to prevent issues with `water_tech=XP12`.
 
 #### Miscellaneous
 * Automatically saves the same data (active tile, default provider, default zoom level and base folder) that the power button icon does when you close the application using the operating system close button.
 * Additional console messages addeded to provide more feedback. These are categorized with a verbosity setting of 1 (default).
-* "Part of image could not be obtained" error will now show a summary message at the end of a batch build.
+* Attempt to redownload images (only once) that were not properly downloaded (white squares).
+* "Part of image could not be obtained" error will now show a summary message at the end of a batch build if redownload was unsuccessful.
 * Minor visual tweaks which included moving the "Refresh" and "Exit" buttons to the bottom of the left side in the Tiles collection and management window to better illustrate the "Refresh" button is not tied to Batch Build only.
+* Update Python to 3.13.5.
 * Includes Windows Python dependency wheel files for gdal and scikit-fmm.
 * Update and pin requirements to latest working versions.
 * Adds a bash script to automate the setup process for those that prefer not to use the packaged version.
 * Removed Maxar and Mapbox image providers which are no longer publically available.
+* Removed unavailable OSM FR and updated RU server with a working URL.
+* Include 7-zip executable for macOS.
+* Update EOX url template and deleted the broken EOX2.lay file. @A346fan
+* Update nvcompress to macOS universal binary. @w8sl
+* Removed unused tools.
 
 #### Bug Fixes
 * If one-click symlink feature is used, added removal of symlink when "Erase cached data" "Tile (whole)" option is used.
@@ -52,6 +60,9 @@ The specific changes in this forked version:
 * Fixed Here (https://wego.here.com/) image provider API key.
 * Fixed issue in certain coastal regions where .dds files were being deleted with cleaning_level set to 2 or higher.
 * Corrected a few typos in setting descriptions.
+* Default `imprint_mask_to_dds` to `False` to prevent issues when using `water_tech=XP12`.
+* Fixed a bug with random OSM server selection not working correctly.
+* Include recompiled version of Triangle4XP.exe with MinGW-GCC for Windows users to resolve an [issue](https://github.com/oscarpilote/Ortho4XP/issues/282).
 
 
 ## Installation

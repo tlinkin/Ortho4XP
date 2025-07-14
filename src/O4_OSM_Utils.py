@@ -575,6 +575,12 @@ def get_overpass_data(query, bbox, server_code=None):
                 2 ** tentative,
                 "sec...",
             )
+            true_server_code = (
+                random.choice(list(overpass_servers.keys()))
+                if overpass_server_choice == "random"
+                else overpass_server_choice
+            )
+            UI.vprint(1, "        Trying different OSM server", true_server_code)
         if tentative >= max_osm_tentatives:
             return 0
         if UI.red_flag:

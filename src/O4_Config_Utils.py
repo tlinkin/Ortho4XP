@@ -968,7 +968,7 @@ class Ortho4XP_Config(tk.Toplevel):
         for zone in globals()["zone_list"]:
             _zone_list = [int(coord) for coord in zone[0]]
             _zone_list = set(_zone_list)
-            if lat in _zone_list and lon+1 in _zone_list:
+            if lat in _zone_list and lon in _zone_list:
                 tile_zones.append(zone)
         if tile_zones:
             response = messagebox.askyesnocancel("Confirmation", "Save tile zones?", parent=self)
