@@ -657,10 +657,12 @@ def ensure_elevation(source, lat, lon, verbose=True):
             + deferranti_nbr
             + ".zip"
         )
-        if os.path.exists(FNAMES.viewfinderpanorama(lat, lon)) and (
-            resol == 3
-            or os.path.getsize(FNAMES.viewfinderpanorama(lat, lon)) >= 25934402
-        ):
+        # if os.path.exists(FNAMES.viewfinderpanorama(lat, lon)) and (
+        #     resol == 3
+        #     or os.path.getsize(FNAMES.viewfinderpanorama(lat, lon)) >= 25934402
+        # ):
+        #  Removed check for file size as this was causing issues with using custom_dems
+        if os.path.exists(FNAMES.viewfinderpanorama(lat, lon)) and resol == 3:
             UI.vprint(2, "   Recycling ", FNAMES.viewfinderpanorama(lat, lon))
             return 1
         UI.vprint(
