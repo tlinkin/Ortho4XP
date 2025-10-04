@@ -40,7 +40,7 @@ The specific changes in this forked version:
 * Attempt to redownload images (only once) that were not properly downloaded (white squares).
 * "Part of image could not be obtained" error will now show a summary message at the end of a batch build if redownload was unsuccessful.
 * Minor visual tweaks which included moving the "Refresh" and "Exit" buttons to the bottom of the left side in the Tiles collection and management window to better illustrate the "Refresh" button is not tied to Batch Build only.
-* Update Python to 3.13.5.
+* Update Python to 3.13.7.
 * Includes Windows Python dependency wheel files for gdal and scikit-fmm.
 * Update and pin requirements to latest working versions.
 * Adds a bash script to automate the setup process for those that prefer not to use the packaged version.
@@ -63,6 +63,7 @@ The specific changes in this forked version:
 * Default `imprint_mask_to_dds` to `False` to prevent issues when using `water_tech=XP12`.
 * Fixed a bug with random OSM server selection not working correctly.
 * Include recompiled version of Triangle4XP.exe with MinGW-GCC for Windows users to resolve an [issue](https://github.com/oscarpilote/Ortho4XP/issues/282).
+* Fixed a bug when using manually installed dem files were not being used on certain tiles.
 
 
 ## Installation
