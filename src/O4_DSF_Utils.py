@@ -1044,8 +1044,6 @@ def build_dsf(tile, download_queue):
                 total_cross_pool += 1
                 textured_tris[0]["cross-pool"].extend(tri_p)
     
-    download_queue.put("quit")
-
     UI.vprint(1, "-> Encoding of the DSF file")
     UI.vprint(1, "     Final nbr of nodes: " + str(len_textured_nodes))
     UI.vprint(2, "     Final nbr of cross pool tris: " + str(total_cross_pool))

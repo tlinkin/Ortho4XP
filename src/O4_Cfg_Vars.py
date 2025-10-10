@@ -360,6 +360,7 @@ list_app_vars = [
     "overpass_server_choice",
     "skip_downloads",
     "skip_converts",
+    "max_download_slots",
     "max_convert_slots",
     "check_tms_response",
     "http_timeout",
