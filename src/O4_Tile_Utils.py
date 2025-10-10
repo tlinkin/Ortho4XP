@@ -4,7 +4,7 @@ import time
 import shutil
 import queue
 import threading
-import concurrent.futures
+from collections import defaultdict
 import O4_UI_Utils as UI
 import O4_File_Names as FNAMES
 import O4_Imagery_Utils as IMG
@@ -15,96 +15,83 @@ import O4_DSF_Utils as DSF
 import O4_Overlay_Utils as OVL
 from O4_Parallel_Utils import parallel_launch, parallel_join
 
+max_download_slots = 16
 max_convert_slots = 4
 skip_downloads = False
 skip_converts = False
 
 ################################################################################
-def download_textures(tile, download_queue, convert_queue, workers=96):
-    UI.vprint(1, "-> Opening download queue.")
-    done = 0
-    quitting = False
-    interrupted = False
-    inflight = set()
-    lock = threading.Lock()
-    seen = set()
+def download_textures(tile, download_queue, convert_queue, workers=None):
+    worker_count = max(1, workers or max_download_slots)
+    UI.vprint(1, f"-> Opening download queue with {worker_count} worker(s).")
 
-    def _download_one(attrs):
+    progress_lock = threading.Lock()
+    progress_state = {"done": 0, "pending": 0}
+    attempts = defaultdict(int)
+    interrupted = False
+    max_attempts = 3
+
+    def _update_progress_locked():
+        denom = (
+            progress_state["done"]
+            + progress_state["pending"]
+            + download_queue.qsize()
+        )
+        UI.progress_bar(2, int(100 * progress_state["done"] / denom) if denom else 100)
+
+    def _download_task(*attrs):
+        nonlocal interrupted
+
+        if UI.red_flag:
+            interrupted = True
+            return 0
+
+        attrs = tuple(attrs)
+        with progress_lock:
+            progress_state["pending"] += 1
+            _update_progress_locked()
+
         try:
             ok = IMG.build_jpeg_ortho(tile, *attrs)
-        except Exception as e:
-            return e, attrs
-        else:
-            return ok, attrs
+        except Exception as err:
+            UI.vprint(2, f"Download failed: {err}")
+            ok = 0
 
-    def _update_progress():
-        with lock:
-            denom = done + download_queue.qsize()
-            UI.progress_bar(2, int(100 * done / denom) if denom else 100)
+        should_retry = False
+        with progress_lock:
+            progress_state["pending"] -= 1
+            if ok:
+                progress_state["done"] += 1
+                attempts.pop(attrs, None)
+            else:
+                attempt = attempts[attrs] + 1
+                attempts[attrs] = attempt
+                should_retry = attempt < max_attempts and not UI.red_flag
+                if not should_retry:
+                    attempts.pop(attrs, None)
+            _update_progress_locked()
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
-        try:
-            while True:
-                if inflight:
-                    finished, not_done = concurrent.futures.wait(
-                        inflight, timeout=0, return_when=concurrent.futures.FIRST_COMPLETED
-                    )
-                    inflight = not_done
-                    for fut in finished:
-                        res, texture_attributes = fut.result()
-                        if isinstance(res, Exception):
-                            UI.vprint(2, f"Download failed: {res}")
-                        elif bool(res):
-                            done += 1
-                            convert_queue.put((tile, *texture_attributes))
-                            _update_progress()
+        if ok:
+            convert_queue.put((tile, *attrs))
+        elif should_retry:
+            download_queue.put(attrs)
+            with progress_lock:
+                _update_progress_locked()
 
-                if quitting and not inflight:
-                    break
+        if UI.red_flag:
+            interrupted = True
 
-                try:
-                    item = download_queue.get(timeout=0.05)
-                except queue.Empty:
-                    if UI.red_flag:
-                        UI.vprint(1, "Download process interrupted.")
-                        quitting = True
-                        interrupted = True
-                    continue
+        return 1 if ok else 0
 
-                if isinstance(item, str) and item == "quit":
-                    quitting = True
-                    continue
+    workers_list = parallel_launch(_download_task, download_queue, worker_count)
 
-                try:
-                    key = tuple(item)
-                except TypeError:
-                    key = None
-                if key is not None:
-                    if key in seen:
-                        continue
-                    seen.add(key)
-
-                inflight.add(pool.submit(_download_one, item))
-
-                if UI.red_flag:
-                    UI.vprint(1, "Download process interrupted.")
-                    quitting = True
-                    interrupted = True
-
-        finally:
-            for fut in concurrent.futures.as_completed(inflight):
-                res, texture_attributes = fut.result()
-                if isinstance(res, Exception):
-                    UI.vprint(2, f"Download failed: {res}")
-                elif bool(res):
-                    done += 1
-                    convert_queue.put((tile, *texture_attributes))
-                    _update_progress()
+    parallel_join(workers_list)
 
     UI.progress_bar(2, 100)
-    if interrupted:
+    if interrupted or UI.red_flag:
+        UI.vprint(1, "Download process interrupted.")
         return 0
-    if done:
+    if progress_state["done"]:
         UI.vprint(1, " *Download of textures completed.")
     return 1
 
@@ -177,17 +164,19 @@ def build_tile(tile):
         UI.exit_message_and_bottom_line("")
         return 0
 
-    download_queue = queue.Queue(maxsize=512)
-    convert_queue = queue.Queue(maxsize=512)
-    
+    download_queue = queue.Queue()
+    convert_queue = queue.Queue()
+
     download_launched = False
     convert_launched = False
+    download_workers = max_download_slots
 
     build_dsf_thread = threading.Thread(
         target=DSF.build_dsf, args=[tile, download_queue]
     )
     download_thread = threading.Thread(
-        target=download_textures, args=[tile, download_queue, convert_queue]
+        target=download_textures,
+        args=[tile, download_queue, convert_queue, download_workers],
     )
     build_dsf_thread.start()
     if not skip_downloads:
@@ -210,7 +199,8 @@ def build_tile(tile):
             convert_launched = True
     build_dsf_thread.join()
     if download_launched:
-        download_queue.put("quit")
+        for _ in range(download_workers):
+            download_queue.put("quit")
         download_thread.join()
         if convert_launched:
             for _ in range(max_convert_slots):

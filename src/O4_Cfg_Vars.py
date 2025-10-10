@@ -40,11 +40,18 @@ cfg_app_vars = {
         "default": False,
         "hint": "Imagery will be downloaded but not converted from jpg to dds. Some user prefer to postprocess imagery with third party softwares prior to the dds conversion. In that case Step 3 needs to be run a second time after the retouch work.",
     },
+    "max_download_slots": {
+        "module": "TILE",
+        "type": int,
+        "default": 16,
+        "values": (16, 32, 64, 96),
+        "hint": "Number of parallel threads pulling from the download queue. Increase to speed up imagery downloads when your network and provider allow more concurrent requests.",
+    },
     "max_convert_slots": {
         "module": "TILE",
         "type": int,
         "default": 4,
-        "values": (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16),
+        "values": (1, 2, 3, 4, 5, 6, 7, 8),
         "hint": "Number of parallel threads for dds conversion. Should be mainly dictated by the number of cores in your CPU.",
     },
     "check_tms_response": {
@@ -353,6 +360,7 @@ list_app_vars = [
     "overpass_server_choice",
     "skip_downloads",
     "skip_converts",
+    "max_download_slots",
     "max_convert_slots",
     "check_tms_response",
     "http_timeout",
