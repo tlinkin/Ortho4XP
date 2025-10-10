@@ -4,6 +4,7 @@ import time
 import shutil
 import queue
 import threading
+import concurrent.futures
 import O4_UI_Utils as UI
 import O4_File_Names as FNAMES
 import O4_Imagery_Utils as IMG
@@ -19,23 +20,90 @@ skip_downloads = False
 skip_converts = False
 
 ################################################################################
-def download_textures(tile, download_queue, convert_queue):
+def download_textures(tile, download_queue, convert_queue, workers=96):
     UI.vprint(1, "-> Opening download queue.")
     done = 0
-    while True:
-        texture_attributes = download_queue.get()
-        if isinstance(texture_attributes, str) and texture_attributes == "quit":
-            UI.progress_bar(2, 100)
-            break
-        if IMG.build_jpeg_ortho(tile, *texture_attributes):
-            done += 1
-            UI.progress_bar(
-                2, int(100 * done / (done + download_queue.qsize()))
-            )
-            convert_queue.put((tile, *texture_attributes))
-        if UI.red_flag:
-            UI.vprint(1, "Download process interrupted.")
-            return 0
+    quitting = False
+    interrupted = False
+    inflight = set()
+    lock = threading.Lock()
+    seen = set()
+
+    def _download_one(attrs):
+        try:
+            ok = IMG.build_jpeg_ortho(tile, *attrs)
+        except Exception as e:
+            return e, attrs
+        else:
+            return ok, attrs
+
+    def _update_progress():
+        with lock:
+            denom = done + download_queue.qsize()
+            UI.progress_bar(2, int(100 * done / denom) if denom else 100)
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+        try:
+            while True:
+                if inflight:
+                    finished, not_done = concurrent.futures.wait(
+                        inflight, timeout=0, return_when=concurrent.futures.FIRST_COMPLETED
+                    )
+                    inflight = not_done
+                    for fut in finished:
+                        res, texture_attributes = fut.result()
+                        if isinstance(res, Exception):
+                            UI.vprint(2, f"Download failed: {res}")
+                        elif bool(res):
+                            done += 1
+                            convert_queue.put((tile, *texture_attributes))
+                            _update_progress()
+
+                if quitting and not inflight:
+                    break
+
+                try:
+                    item = download_queue.get(timeout=0.05)
+                except queue.Empty:
+                    if UI.red_flag:
+                        UI.vprint(1, "Download process interrupted.")
+                        quitting = True
+                        interrupted = True
+                    continue
+
+                if isinstance(item, str) and item == "quit":
+                    quitting = True
+                    continue
+
+                try:
+                    key = tuple(item)
+                except TypeError:
+                    key = None
+                if key is not None:
+                    if key in seen:
+                        continue
+                    seen.add(key)
+
+                inflight.add(pool.submit(_download_one, item))
+
+                if UI.red_flag:
+                    UI.vprint(1, "Download process interrupted.")
+                    quitting = True
+                    interrupted = True
+
+        finally:
+            for fut in concurrent.futures.as_completed(inflight):
+                res, texture_attributes = fut.result()
+                if isinstance(res, Exception):
+                    UI.vprint(2, f"Download failed: {res}")
+                elif bool(res):
+                    done += 1
+                    convert_queue.put((tile, *texture_attributes))
+                    _update_progress()
+
+    UI.progress_bar(2, 100)
+    if interrupted:
+        return 0
     if done:
         UI.vprint(1, " *Download of textures completed.")
     return 1
@@ -109,8 +177,8 @@ def build_tile(tile):
         UI.exit_message_and_bottom_line("")
         return 0
 
-    download_queue = queue.Queue()
-    convert_queue = queue.Queue()
+    download_queue = queue.Queue(maxsize=512)
+    convert_queue = queue.Queue(maxsize=512)
     
     download_launched = False
     convert_launched = False
