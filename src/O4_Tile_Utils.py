@@ -21,7 +21,13 @@ skip_downloads = False
 skip_converts = False
 
 ################################################################################
-def download_textures(tile, download_queue, convert_queue, workers=None):
+def download_textures(
+    tile,
+    download_queue,
+    convert_queue,
+    workers=None,
+    producer_done_event=None,
+):
     worker_count = max(1, workers or max_download_slots)
     UI.vprint(1, f"-> Opening download queue with {worker_count} worker(s).")
 
@@ -83,7 +89,24 @@ def download_textures(tile, download_queue, convert_queue, workers=None):
 
         return 1 if ok else 0
 
+    if producer_done_event is None:
+        producer_done_event = threading.Event()
+        producer_done_event.set()
+
     workers_list = parallel_launch(_download_task, download_queue, worker_count)
+
+    while not producer_done_event.is_set() and not UI.red_flag:
+        time.sleep(0.05)
+
+    while not UI.red_flag:
+        with progress_lock:
+            pending = progress_state["pending"]
+        if download_queue.empty() and pending == 0:
+            break
+        time.sleep(0.05)
+
+    for _ in range(worker_count):
+        download_queue.put("quit")
 
     parallel_join(workers_list)
 
@@ -174,9 +197,17 @@ def build_tile(tile):
     build_dsf_thread = threading.Thread(
         target=DSF.build_dsf, args=[tile, download_queue]
     )
+    producer_done_event = threading.Event()
+
     download_thread = threading.Thread(
         target=download_textures,
-        args=[tile, download_queue, convert_queue, download_workers],
+        args=[
+            tile,
+            download_queue,
+            convert_queue,
+            download_workers,
+            producer_done_event,
+        ],
     )
     build_dsf_thread.start()
     if not skip_downloads:
@@ -198,9 +229,8 @@ def build_tile(tile):
             )
             convert_launched = True
     build_dsf_thread.join()
+    producer_done_event.set()
     if download_launched:
-        for _ in range(download_workers):
-            download_queue.put("quit")
         download_thread.join()
         if convert_launched:
             for _ in range(max_convert_slots):
