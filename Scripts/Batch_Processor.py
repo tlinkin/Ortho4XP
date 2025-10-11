@@ -92,4 +92,4 @@ target_overlay_dir = output_dir / "yOrtho4XP_Overlays"
 if target_overlay_dir.exists():
     shutil.rmtree(target_overlay_dir)
 
-shutil.copy(source_overlay_dir, target_overlay_dir)
+shutil.copytree(source_overlay_dir, target_overlay_dir)
