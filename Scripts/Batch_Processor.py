@@ -45,18 +45,16 @@ dem_dir = Path.home() / "Downloads" / "Sonny LiDAR"
 default_zl = 17
 default_website = "BI"
 
-# tiles = GEN.list_tiles_for_countries([
-#   "BGR",
-#   "ROU",
-#   "MDA",
-#   "GRC",
-#   "MKD",
-#   "ALB",
-#   "MNE",
-#   "SRB",
-# ])
-
-tiles = [(42,24)]
+tiles = GEN.list_tiles_for_countries([
+  "BGR",
+  "ROU",
+  "MDA",
+  "GRC",
+  "MKD",
+  "ALB",
+  "MNE",
+  "SRB",
+])
 
 # ===== Main =====
 if __name__ == "__main__":
