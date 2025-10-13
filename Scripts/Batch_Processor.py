@@ -68,7 +68,7 @@ tiles = tiles + tiles_extra
 if __name__ == "__main__":
   dem_entries = os.listdir(dem_dir)
 
-  for cords in tiles_extra:
+  for cords in tiles:
     lat, lon = cords
 
     tile = CFG.Tile(lat, lon, f"{output_dir}\\")
