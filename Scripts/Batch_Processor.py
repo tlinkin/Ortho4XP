@@ -56,11 +56,19 @@ tiles = GEN.list_tiles_for_countries([
   "SRB",
 ])
 
+tiles_extra = [
+  (47, 11),
+  (47, 12),
+  (47, 13)
+]
+
+tiles = tiles + tiles_extra
+
 # ===== Main =====
 if __name__ == "__main__":
   dem_entries = os.listdir(dem_dir)
 
-  for cords in tiles:
+  for cords in tiles_extra:
     lat, lon = cords
 
     tile = CFG.Tile(lat, lon, f"{output_dir}\\")
@@ -76,6 +84,8 @@ if __name__ == "__main__":
         full_path = os.path.join(dem_dir, name)
         if os.path.isfile(full_path):
           tile.custom_dem = full_path
+          tile.iterate = 3
+          tile.mask_zl = 16
           tile.write_to_config()
 
     VMAP.build_poly_file(tile)
@@ -84,10 +94,9 @@ if __name__ == "__main__":
     TILE.build_tile(tile)
     OVL.build_overlay(lat, lon)
 
-
 source_overlay_dir = Ortho4XP_dir / "yOrtho4XP_Overlays"
 target_overlay_dir = output_dir / "yOrtho4XP_Overlays"
 if target_overlay_dir.exists():
-    shutil.rmtree(target_overlay_dir)
+  shutil.rmtree(target_overlay_dir)
 
 shutil.copytree(source_overlay_dir, target_overlay_dir)

@@ -6,15 +6,12 @@ that intersect or are fully contained within:
   - an arbitrary Shapely geometry.
 
 Public API:
-  - list_tiles_for_countries(countries: list[str], full_only: bool = False) -> list[str]
-  - list_tiles_for_continent(continent: str, full_only: bool = False) -> list[str]
-  - list_tiles_for_geometry(geom, full_only: bool = False) -> list[str]
-  - tile_code(lat_deg: int, lon_deg: int) -> str
-  - tile_bbox(code: str) -> shapely.geometry.Polygon
+  - list_tiles_for_countries(countries: list[str], full_only: bool = False) -> Tuple[int, int]
+  - list_tiles_for_continent(continent: str, full_only: bool = False) -> Tuple[int, int]
+  - list_tiles_for_geometry(geom, full_only: bool = False) -> Tuple[int, int]
 
 Notes:
 - Coordinates and grids are in EPSG:4326 (WGS84 lon/lat).
-- Ortho4XP naming is ±DD for latitude and ±DDD for longitude with sign.
 """
 
 from __future__ import annotations
@@ -30,8 +27,6 @@ __all__ = [
   "list_tiles_for_countries",
   "list_tiles_for_continent",
   "list_tiles_for_geometry",
-  "tile_code",
-  "tile_bbox",
 ]
 
 # ---------------------------------------------------------------------
@@ -83,34 +78,6 @@ def _get_iso3(props: dict) -> str:
 
 def _get_name(props: dict) -> str:
   return (props.get("ADMIN") or props.get("name") or "").strip().lower()
-
-
-# ---------------------------------------------------------------------
-# Public helpers
-# ---------------------------------------------------------------------
-def tile_code(lat_deg: int, lon_deg: int) -> str:
-  """
-  Build Ortho4XP-style code: ±DD ±DDD (with signs).
-  Examples:
-    tile_code(42, 14)  -> '+42+014'
-    tile_code(-42, -6) -> '-42-006'
-  """
-  return f"{lat_deg:+03d}{lon_deg:+04d}"
-
-
-def tile_bbox(code: str) -> Polygon:
-  """
-  Convert code like '+42+014' back to a 1×1 degree bbox polygon.
-  """
-  if len(code) not in (7, 8):  # e.g., '+42+014' (8), '-42-006' (8); '+9+009' (7)
-    raise ValueError(f"Invalid tile code: {code}")
-
-  # Parse signed ints: first 3 chars for lat (±DD), next 4 for lon (±DDD)
-  lat_str = code[:3]
-  lon_str = code[3:]
-  lat = int(lat_str)
-  lon = int(lon_str)
-  return box(lon, lat, lon + 1, lat + 1)
 
 
 # ---------------------------------------------------------------------
