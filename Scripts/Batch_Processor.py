@@ -85,8 +85,8 @@ if __name__ == "__main__":
         if os.path.isfile(full_path):
           tile.custom_dem = full_path
           tile.iterate = 3
-          tile.mask_zl = 16
-          tile.write_to_config()
+
+    tile.write_to_config()
 
     VMAP.build_poly_file(tile)
     MESH.build_mesh(tile)
