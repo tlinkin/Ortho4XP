@@ -2448,7 +2448,7 @@ def convert_texture(
         else:
             conv_cmd = [
                 dds_convert_cmd,
-                "-bc7",
+                "-bc3",
                 "-fast",
                 file_to_convert,
                 os.path.join(tile.build_dir, "textures", out_file_name),
