@@ -39,8 +39,8 @@ IMG.initialize_providers_dict()
 IMG.initialize_combined_providers_dict()
 
 # ===== Configuration =====
-output_dir = Path.home() / "Downloads" / "Ortho Tiles"
-dem_dir = Path.home() / "Downloads" / "Sonny LiDAR"
+output_dir = Path('D:') / "Ortho Tiles"
+dem_dir = Path('D:') / "Sonny LiDAR"
 
 default_zl = 17
 default_website = "BI"
@@ -54,6 +54,14 @@ tiles = GEN.list_tiles_for_countries([
   "ALB",
   "MNE",
   "SRB",
+  "BIH",
+  "HRV",
+  "SVK",
+  "SVN",
+  "AUT",
+  "CZE",
+  "CHE",
+  "ITA",
 ])
 
 tiles_extra = [
