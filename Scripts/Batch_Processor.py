@@ -14,6 +14,7 @@ import typer
 # ===== Path setup =====
 Ortho4XP_dir = Path(__file__).resolve().parent.parent
 Scripts_dir = Path(__file__).resolve().parent
+Original_cwd = Path.cwd()  # Save before chdir for resolving relative paths
 sys.path.insert(0, str(Scripts_dir))
 sys.path.insert(0, str(Ortho4XP_dir / "src"))
 
@@ -181,6 +182,10 @@ def main(
     ] = False,
 ) -> None:
     """Process tiles in batch mode."""
+    # Resolve config path against original working directory
+    if not config.is_absolute():
+        config = Original_cwd / config
+
     # Load configuration
     try:
         cfg = load_config(config)
