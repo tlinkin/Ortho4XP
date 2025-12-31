@@ -1,0 +1,124 @@
+# Batch Processor Configuration
+# Copy this file to batch_config.toml and customize for your setup
+
+# ============================================================================
+# REQUIRED: Batch Processing Settings
+# ============================================================================
+[batch]
+output_dir = "~/Ortho4XP/Tiles"      # Output directory for generated tiles
+dem_dir = "~/Ortho4XP/DEMs"          # Directory containing DEM/elevation files
+state_file = "batch_state.toml"       # State tracking file (for resuming)
+
+# ============================================================================
+# REQUIRED: Tile Sources (specify at least one)
+# ============================================================================
+[sources]
+# Specify countries by ISO3 code or name
+countries = [
+    # "USA",
+    # "CAN",
+    # "GBR",
+]
+
+# Or specify individual tiles as [lat, lon] pairs
+tiles = [
+    # [45, -122],   # Portland, OR area
+    # [46, -123],   # Example tile
+]
+
+# ============================================================================
+# OPTIONAL: Application Settings
+# ============================================================================
+[app]
+verbosity = 1                         # 0=quiet, 1=normal, 2=verbose, 3=debug
+cleaning_level = 1                    # 0=keep all, 1=normal, 2=clean more, 3=clean all
+overpass_server_choice = "random"     # OSM server: "random", "de", "fr", etc.
+skip_downloads = false                # Skip imagery download (DSF only)
+skip_converts = false                 # Skip DDS conversion
+max_download_slots = 1                # Parallel orthophoto builds
+max_convert_slots = 4                 # Parallel DDS conversions
+check_tms_response = true             # Retry on HTTP errors
+http_timeout = 10.0                   # HTTP request timeout (seconds)
+max_connect_retries = 5               # Connection retry attempts
+max_baddata_retries = 5               # Server error retry attempts
+ovl_exclude_pol = [0]                 # Exclude polygon types from overlay
+ovl_exclude_net = []                  # Exclude network types from overlay
+custom_scenery_dir = ""               # X-Plane Custom Scenery path
+custom_overlay_src = ""               # Overlay source directory
+custom_overlay_src_alternate = ""     # Alternate overlay source
+
+# ============================================================================
+# OPTIONAL: Default Tile Settings
+# These apply to all tiles unless overridden per-tile
+# ============================================================================
+[tile]
+# --- Imagery ---
+default_website = "BI"                # Default imagery provider code
+default_zl = 17                       # Default zoom level (10-20)
+zone_list = []                        # Custom zone definitions
+
+# --- Vector Processing ---
+apt_smoothing_pix = 8                 # Airport elevation smoothing
+road_level = 1                        # Road inclusion (0=none, 1-5=more)
+road_banking_limit = 0.5              # Road slope threshold (meters)
+lane_width = 4.0                      # Road buffer width (meters)
+max_levelled_segs = 200000            # Max road segments for leveling
+water_simplification = 0.0            # Water node simplification (meters)
+min_area = 0.001                      # Min water patch size (km²)
+max_area = 200.0                      # Max water patch size (km²)
+clean_bad_geometries = true           # Fix OSM geometry errors
+
+# --- Mesh Generation ---
+mesh_zl = 19                          # Mesh zoom level (16-20)
+curvature_tol = 2.0                   # Global curvature tolerance
+apt_curv_tol = 0.5                    # Airport curvature tolerance
+apt_curv_ext = 0.5                    # Airport curvature extent (km)
+coast_curv_tol = 1.0                  # Coastal curvature tolerance
+coast_curv_ext = 0.5                  # Coastal curvature extent (km)
+limit_tris = 3.0                      # Triangle limit (millions)
+min_angle = 10.0                      # Minimum triangle angle (degrees)
+sea_smoothing_mode = "zero"           # Sea smoothing: "zero", "mean", "none"
+water_smoothing = 10                  # Inland water smoothing passes
+iterate = 0                           # Mesh refinement iterations
+
+# --- Masks ---
+mask_zl = 14                          # Mask zoom level (14-16)
+masks_width = 100                     # Mask extent from coastline (meters)
+masking_mode = "sand"                 # Mask type: "sand", "rocks", "3steps"
+use_masks_for_inland = false          # Apply masks to inland water
+imprint_masks_to_dds = false          # Embed masks in DDS textures
+distance_masks_too = false            # Build distance masks
+masks_use_DEM_too = false             # Use DEM for mask precision
+masks_custom_extent = ""              # Custom mask extent file
+
+# --- DSF/Rendering ---
+cover_airports_with_highres = "False" # High-res airports: "False", "True", "ICAO"
+cover_extent = 1.0                    # Airport coverage extent (km)
+cover_zl = 18                         # Airport coverage zoom level
+sea_texture_blur = 0.0                # Sea texture blur radius (meters)
+water_tech = "XP11 + bathy"           # Water tech: "XP12", "XP11 + bathy"
+ratio_water = 0.25                    # Inland water transparency (0-1)
+ratio_bathy = 1.0                     # Bathymetry multiplier (0-1)
+normal_map_strength = 1.0             # Normal map intensity
+terrain_casts_shadows = true          # Enable terrain shadows
+overlay_lod = 25000.0                 # Overlay draw distance (meters)
+use_decal_on_terrain = false          # Apply terrain decal
+
+# --- Elevation ---
+custom_dem = ""                       # Custom DEM file path
+fill_nodata = true                    # Fill missing elevation data
+
+# ============================================================================
+# OPTIONAL: Per-Tile Overrides
+# Use tile ID format: "+45-122" for lat=45, lon=-122
+# ============================================================================
+
+# Example: Custom LiDAR DEM for specific tile
+# [tile_overrides."+45-122"]
+# custom_dem = "/path/to/lidar/N45W122.tif"
+# iterate = 3
+
+# Example: Different zoom level for another tile
+# [tile_overrides."+46-123"]
+# default_zl = 18
+# cover_airports_with_highres = "ICAO"

@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__serena",
+      "mcp__context7"
+    ]
+  },
+  "enabledMcpjsonServers": [
+    "serena",
+    "context7"
+  ],
+  "enabledPlugins": {
+    "hookify@claude-plugins-official": true,
+    "chief-wiggum@chief-wiggum": true,
+    "pyright-lsp@claude-plugins-official": true
+  }
+}
