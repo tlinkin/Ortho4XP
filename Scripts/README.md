@@ -74,6 +74,34 @@ python Batch_Processor.py -c batch_config.toml --force
 python Batch_Processor.py -c batch_config.toml -v
 ```
 
+## Usage Notes
+
+### Working Directory
+
+The batch processor automatically changes to the Ortho4XP root directory at startup. This is required by Ortho4XP's internal path resolution.
+
+**Config paths are resolved from where you run the command**, not from the Ortho4XP root. This means you can run from any directory:
+
+```bash
+# From Scripts/ directory
+cd Scripts
+python Batch_Processor.py -c batch_config.toml
+
+# From Ortho4XP root
+cd ..
+python Scripts/Batch_Processor.py -c Scripts/batch_config.toml
+
+# From anywhere with absolute paths
+python C:/Ortho4XP/Scripts/Batch_Processor.py -c C:/Ortho4XP/Scripts/batch_config.toml
+```
+
+### Config File Paths
+
+Paths **inside** the config file (`output_dir`, `dem_dir`, `custom_dem`, etc.) support:
+- Absolute paths: `D:/Ortho Tiles` or `/home/user/tiles`
+- Home directory expansion: `~/Ortho4XP/Tiles`
+- Environment variables: `$HOME/tiles` or `${OUTPUT_DIR}`
+
 ## Configuration Reference
 
 ### [batch] Section (Required)
@@ -229,10 +257,10 @@ Each tile goes through four steps:
 ## Troubleshooting
 
 ### "Config file not found"
-Ensure the path to your config file is correct. Use absolute paths if needed.
+The config path is resolved from where you run the command. Check that the path is correct relative to your current directory, or use an absolute path.
 
 ### "Missing utils directory"
-Run from the Ortho4XP root directory or ensure the `Utils/` directory exists.
+Ensure the Ortho4XP installation is complete and the `Utils/` directory exists at the repository root.
 
 ### Tiles stuck in "failed" state
 Use `--retry-failed` to reprocess failed tiles, or `--force` to start fresh.
