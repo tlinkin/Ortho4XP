@@ -11,6 +11,7 @@ from .config import (
     expand_path,
     get_tile_config,
     validate_config,
+    apply_directory_overrides,
 )
 
 from .state import (
@@ -56,6 +57,7 @@ __all__ = [
     "expand_path",
     "get_tile_config",
     "validate_config",
+    "apply_directory_overrides",
     # State
     "BatchState",
     "TileState",

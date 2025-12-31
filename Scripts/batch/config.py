@@ -22,6 +22,14 @@ class BatchConfig:
     output_dir: Path
     dem_dir: Path
     state_file: Path = field(default_factory=lambda: Path("batch_state.toml"))
+    # Optional data directory overrides (None = use Ortho4XP defaults)
+    osm_dir: Path | None = None
+    elevation_dir: Path | None = None
+    orthophotos_dir: Path | None = None
+    masks_dir: Path | None = None
+    geotiffs_dir: Path | None = None
+    patches_dir: Path | None = None
+    tmp_dir: Path | None = None
 
 
 @dataclass
@@ -213,6 +221,13 @@ def load_config(path: Path) -> Config:
         output_dir=expand_path(batch_data["output_dir"]),
         dem_dir=expand_path(batch_data["dem_dir"]),
         state_file=Path(batch_data.get("state_file", "batch_state.toml")),
+        osm_dir=expand_path(batch_data["osm_dir"]) if batch_data.get("osm_dir") else None,
+        elevation_dir=expand_path(batch_data["elevation_dir"]) if batch_data.get("elevation_dir") else None,
+        orthophotos_dir=expand_path(batch_data["orthophotos_dir"]) if batch_data.get("orthophotos_dir") else None,
+        masks_dir=expand_path(batch_data["masks_dir"]) if batch_data.get("masks_dir") else None,
+        geotiffs_dir=expand_path(batch_data["geotiffs_dir"]) if batch_data.get("geotiffs_dir") else None,
+        patches_dir=expand_path(batch_data["patches_dir"]) if batch_data.get("patches_dir") else None,
+        tmp_dir=expand_path(batch_data["tmp_dir"]) if batch_data.get("tmp_dir") else None,
     )
 
     # Build SourcesConfig
@@ -321,4 +336,45 @@ def validate_config(config: Config) -> list[str]:
             f"Invalid default_zl: {config.tile.default_zl} (must be between 10 and 20)"
         )
 
+    # Validate custom directories (check parent exists so directory can be created)
+    custom_dirs = [
+        ("osm_dir", config.batch.osm_dir),
+        ("elevation_dir", config.batch.elevation_dir),
+        ("orthophotos_dir", config.batch.orthophotos_dir),
+        ("masks_dir", config.batch.masks_dir),
+        ("geotiffs_dir", config.batch.geotiffs_dir),
+        ("patches_dir", config.batch.patches_dir),
+        ("tmp_dir", config.batch.tmp_dir),
+    ]
+    for name, path in custom_dirs:
+        if path and not path.exists() and not path.parent.exists():
+            errors.append(f"{name} parent directory does not exist: {path.parent}")
+
     return errors
+
+
+def apply_directory_overrides(batch_config: BatchConfig) -> None:
+    """Apply custom directory paths to O4_File_Names module.
+
+    Must be called after changing to Ortho4XP directory and before
+    initializing Ortho4XP (creating directories).
+
+    Args:
+        batch_config: Batch configuration with optional directory overrides
+    """
+    import O4_File_Names as FNAMES
+
+    if batch_config.osm_dir:
+        FNAMES.OSM_dir = str(batch_config.osm_dir)
+    if batch_config.elevation_dir:
+        FNAMES.Elevation_dir = str(batch_config.elevation_dir)
+    if batch_config.orthophotos_dir:
+        FNAMES.Imagery_dir = str(batch_config.orthophotos_dir)
+    if batch_config.masks_dir:
+        FNAMES.Mask_dir = str(batch_config.masks_dir)
+    if batch_config.geotiffs_dir:
+        FNAMES.Geotiff_dir = str(batch_config.geotiffs_dir)
+    if batch_config.patches_dir:
+        FNAMES.Patch_dir = str(batch_config.patches_dir)
+    if batch_config.tmp_dir:
+        FNAMES.Tmp_dir = str(batch_config.tmp_dir)

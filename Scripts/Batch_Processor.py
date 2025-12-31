@@ -24,6 +24,7 @@ os.chdir(Ortho4XP_dir)
 # Import batch processing modules
 from batch import (
     Config,
+    apply_directory_overrides,
     compute_config_hash,
     load_config,
     load_state,
@@ -40,14 +41,21 @@ app = typer.Typer(
 )
 
 
-def init_ortho4xp() -> bool:
+def init_ortho4xp(config: Config | None = None) -> bool:
     """Initialize Ortho4XP environment.
+
+    Args:
+        config: Optional batch config to apply directory overrides
 
     Returns:
         True if initialization succeeded, False otherwise
     """
     try:
         import O4_File_Names as FNAMES
+
+        # Apply custom directory paths before anything else
+        if config:
+            apply_directory_overrides(config.batch)
 
         sys.path.append(FNAMES.Provider_dir)
 
@@ -211,7 +219,7 @@ def main(
     # Initialize Ortho4XP (skip for dry run)
     callbacks = None
     if not dry_run:
-        if not init_ortho4xp():
+        if not init_ortho4xp(cfg):
             raise typer.Exit(code=1)
         callbacks = create_ortho4xp_callbacks()
 

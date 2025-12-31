@@ -9,6 +9,15 @@ output_dir = "~/Ortho4XP/Tiles"      # Output directory for generated tiles
 dem_dir = "~/Ortho4XP/DEMs"          # Directory containing DEM/elevation files
 state_file = "batch_state.toml"       # State tracking file (for resuming)
 
+# Optional: Custom data directories (defaults to Ortho4XP subdirectories)
+# osm_dir = "~/Ortho4XP/OSM_data"
+# elevation_dir = "~/Ortho4XP/Elevation_data"
+# orthophotos_dir = "~/Ortho4XP/Orthophotos"
+# masks_dir = "~/Ortho4XP/Masks"
+# geotiffs_dir = "~/Ortho4XP/Geotiffs"
+# patches_dir = "~/Ortho4XP/Patches"
+# tmp_dir = "~/Ortho4XP/tmp"
+
 # ============================================================================
 # REQUIRED: Tile Sources (specify at least one)
 # ============================================================================
