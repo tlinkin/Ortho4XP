@@ -51,6 +51,7 @@ class AppConfig:
     skip_converts: bool = False
     max_download_slots: int = 1
     max_convert_slots: int = 4
+    masks_build_slots: int = 4
     check_tms_response: bool = True
     http_timeout: float = 10.0
     max_connect_retries: int = 5

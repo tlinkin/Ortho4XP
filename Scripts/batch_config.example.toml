@@ -46,6 +46,7 @@ skip_downloads = false                # Skip imagery download (DSF only)
 skip_converts = false                 # Skip DDS conversion
 max_download_slots = 96               # Parallel orthophoto builds
 max_convert_slots = 16                # Parallel DDS conversions
+masks_build_slots = 4                 # Parallel mask generation workers
 check_tms_response = true             # Retry on HTTP errors
 http_timeout = 60.0                   # HTTP request timeout (seconds)
 max_connect_retries = 30              # Connection retry attempts

@@ -63,6 +63,7 @@ def write_ortho4xp_cfg(config: Config) -> None:
     lines.append(f"skip_converts={app.skip_converts}")
     lines.append(f"max_download_slots={app.max_download_slots}")
     lines.append(f"max_convert_slots={app.max_convert_slots}")
+    lines.append(f"masks_build_slots={app.masks_build_slots}")
     lines.append(f"check_tms_response={app.check_tms_response}")
     lines.append(f"http_timeout={app.http_timeout}")
     lines.append(f"max_connect_retries={app.max_connect_retries}")

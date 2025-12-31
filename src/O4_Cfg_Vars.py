@@ -52,6 +52,12 @@ cfg_app_vars = {
         "default": 4,
         "hint": "Number of parallel threads for dds conversion. Should be mainly dictated by the number of cores in your CPU.",
     },
+    "masks_build_slots": {
+        "module": "MASK",
+        "type": int,
+        "default": 4,
+        "hint": "Number of parallel workers for mask generation. Higher values speed up Step 2.5 but use more memory.",
+    },
     "check_tms_response": {
         "module": "IMG",
         "type": bool,
@@ -360,6 +366,7 @@ list_app_vars = [
     "skip_converts",
     "max_download_slots",
     "max_convert_slots",
+    "masks_build_slots",
     "check_tms_response",
     "http_timeout",
     "max_connect_retries",
