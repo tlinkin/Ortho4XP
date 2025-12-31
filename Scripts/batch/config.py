@@ -64,6 +64,15 @@ class AppConfig:
 
 
 @dataclass
+class PipelineConfig:
+    """Pipeline processing configuration."""
+
+    enabled: bool = False  # Use pipelined batch processing
+    prep_workers: int = 2  # Parallel tiles in prep stage (OSM+mesh+masks)
+    dsf_workers: int = 1  # Parallel tiles in DSF stage (usually 1)
+
+
+@dataclass
 class TileConfig:
     """Per-tile config (maps to cfg_tile_vars)."""
 
@@ -130,6 +139,7 @@ class Config:
     sources: SourcesConfig
     app: AppConfig = field(default_factory=AppConfig)
     tile: TileConfig = field(default_factory=TileConfig)
+    pipeline: PipelineConfig = field(default_factory=PipelineConfig)
     tile_overrides: dict[str, dict[str, Any]] = field(default_factory=dict)
 
 
@@ -252,6 +262,13 @@ def load_config(path: Path) -> Config:
         if fld.name in tile_data:
             setattr(tile_config, fld.name, tile_data[fld.name])
 
+    # Build PipelineConfig with defaults
+    pipeline_data = data.get("pipeline", {})
+    pipeline_config = PipelineConfig()
+    for fld in fields(PipelineConfig):
+        if fld.name in pipeline_data:
+            setattr(pipeline_config, fld.name, pipeline_data[fld.name])
+
     # Get tile overrides
     tile_overrides = data.get("tile_overrides", {})
 
@@ -260,6 +277,7 @@ def load_config(path: Path) -> Config:
         sources=sources_config,
         app=app_config,
         tile=tile_config,
+        pipeline=pipeline_config,
         tile_overrides=tile_overrides,
     )
 

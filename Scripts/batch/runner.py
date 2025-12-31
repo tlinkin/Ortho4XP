@@ -175,6 +175,7 @@ def process_tile(
 def run_batch(
     config: Config,
     state: BatchState,
+    state_path: Path | None = None,
     config_hash: str = "",
     retry_failed: bool = False,
     force: bool = False,
@@ -188,6 +189,7 @@ def run_batch(
     Args:
         config: Batch configuration
         state: Batch state for tracking
+        state_path: Path to state file (required for pipeline mode)
         config_hash: Hash of config file for change detection
         retry_failed: If True, retry failed tiles
         force: If True, reprocess all tiles
@@ -212,6 +214,29 @@ def run_batch(
     # Convert back to coordinates
     to_process = [t for t in all_tiles if make_tile_id(*t) in to_process_ids]
 
+    if not to_process:
+        return 0, 0, 0
+
+    # Use pipeline mode if enabled and we have callbacks
+    if config.pipeline.enabled and callbacks and not dry_run:
+        if state_path is None:
+            raise ValueError("state_path required for pipeline mode")
+
+        from .pipeline import PipelineManager
+
+        manager = PipelineManager(
+            config=config,
+            state=state,
+            state_path=state_path,
+            callbacks=callbacks,
+            max_prep=config.pipeline.prep_workers,
+            max_dsf=config.pipeline.dsf_workers,
+            on_tile_start=on_tile_start,
+            on_tile_complete=on_tile_complete,
+        )
+        return manager.run(to_process)
+
+    # Sequential processing (original behavior)
     succeeded = 0
     failed = 0
 

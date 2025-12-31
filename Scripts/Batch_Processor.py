@@ -307,6 +307,7 @@ def main(
     total, succeeded, failed = run_batch(
         config=cfg,
         state=state,
+        state_path=state_path,
         config_hash=config_hash,
         retry_failed=retry_failed,
         force=force,
