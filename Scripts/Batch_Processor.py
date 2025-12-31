@@ -41,40 +41,66 @@ app = typer.Typer(
 )
 
 
-def apply_app_config(app_config) -> None:
-    """Apply AppConfig settings to Ortho4XP globals.
+def write_ortho4xp_cfg(config: Config) -> None:
+    """Write Ortho4XP.cfg from batch config before module imports.
+
+    This must be called before importing Ortho4XP modules so they
+    pick up the settings on load.
 
     Args:
-        app_config: AppConfig object with settings
+        config: Batch configuration
     """
-    import O4_Imagery_Utils as IMG
-    import O4_OSM_Utils as OSM
-    import O4_Tile_Utils as TILE
-    import O4_UI_Utils as UI
+    cfg_path = Ortho4XP_dir / "Ortho4XP.cfg"
 
-    # UI settings
-    UI.verbosity = app_config.verbosity
-    UI.cleaning_level = app_config.cleaning_level
+    lines = []
 
-    # OSM settings
-    OSM.overpass_server_choice = app_config.overpass_server_choice
+    # App settings
+    app = config.app
+    lines.append(f"verbosity={app.verbosity}")
+    lines.append(f"cleaning_level={app.cleaning_level}")
+    lines.append(f"overpass_server_choice={app.overpass_server_choice}")
+    lines.append(f"skip_downloads={app.skip_downloads}")
+    lines.append(f"skip_converts={app.skip_converts}")
+    lines.append(f"max_download_slots={app.max_download_slots}")
+    lines.append(f"max_convert_slots={app.max_convert_slots}")
+    lines.append(f"check_tms_response={app.check_tms_response}")
+    lines.append(f"http_timeout={app.http_timeout}")
+    lines.append(f"max_connect_retries={app.max_connect_retries}")
+    lines.append(f"max_baddata_retries={app.max_baddata_retries}")
+    lines.append(f"ovl_exclude_pol={app.ovl_exclude_pol}")
+    lines.append(f"ovl_exclude_net={app.ovl_exclude_net}")
+    lines.append(f"custom_scenery_dir={app.custom_scenery_dir}")
+    lines.append(f"custom_overlay_src={app.custom_overlay_src}")
+    lines.append(f"custom_overlay_src_alternate={app.custom_overlay_src_alternate}")
 
-    # Tile/imagery settings
-    TILE.skip_downloads = app_config.skip_downloads
-    TILE.skip_converts = app_config.skip_converts
-    IMG.max_download_slots = app_config.max_download_slots
-    IMG.max_convert_slots = app_config.max_convert_slots
-    IMG.check_tms_response = app_config.check_tms_response
-    IMG.http_timeout = app_config.http_timeout
-    IMG.max_connect_retries = app_config.max_connect_retries
-    IMG.max_baddata_retries = app_config.max_baddata_retries
+    # Tile settings (as global defaults)
+    tile = config.tile
+    lines.append(f"default_website={tile.default_website}")
+    lines.append(f"default_zl={tile.default_zl}")
+    lines.append(f"curvature_tol={tile.curvature_tol}")
+    lines.append(f"apt_curv_tol={tile.apt_curv_tol}")
+    lines.append(f"apt_curv_ext={tile.apt_curv_ext}")
+    lines.append(f"coast_curv_tol={tile.coast_curv_tol}")
+    lines.append(f"coast_curv_ext={tile.coast_curv_ext}")
+    lines.append(f"limit_tris={tile.limit_tris}")
+    lines.append(f"min_angle={tile.min_angle}")
+    lines.append(f"mesh_zl={tile.mesh_zl}")
+    lines.append(f"mask_zl={tile.mask_zl}")
+    lines.append(f"clean_bad_geometries={tile.clean_bad_geometries}")
+    lines.append(f"masks_width={tile.masks_width}")
+    lines.append(f"masking_mode={tile.masking_mode}")
+    lines.append(f"use_masks_for_inland={tile.use_masks_for_inland}")
+    lines.append(f"imprint_masks_to_dds={tile.imprint_masks_to_dds}")
+    lines.append(f"fill_nodata={tile.fill_nodata}")
+
+    cfg_path.write_text("\n".join(lines) + "\n")
 
 
 def init_ortho4xp(config: Config | None = None) -> bool:
     """Initialize Ortho4XP environment.
 
     Args:
-        config: Optional batch config to apply directory and app settings
+        config: Optional batch config to apply directory overrides
 
     Returns:
         True if initialization succeeded, False otherwise
@@ -85,7 +111,6 @@ def init_ortho4xp(config: Config | None = None) -> bool:
         # Apply custom directory paths before anything else
         if config:
             apply_directory_overrides(config.batch)
-            apply_app_config(config.app)
 
         sys.path.append(FNAMES.Provider_dir)
 
@@ -259,6 +284,8 @@ def main(
     # Initialize Ortho4XP (skip for dry run)
     callbacks = None
     if not dry_run:
+        # Write config BEFORE importing Ortho4XP modules
+        write_ortho4xp_cfg(cfg)
         if not init_ortho4xp(cfg):
             raise typer.Exit(code=1)
         callbacks = create_ortho4xp_callbacks(cfg.batch.output_dir)
