@@ -31,20 +31,20 @@ tiles = [
 # ============================================================================
 [app]
 verbosity = 1                         # 0=quiet, 1=normal, 2=verbose, 3=debug
-cleaning_level = 1                    # 0=keep all, 1=normal, 2=clean more, 3=clean all
-overpass_server_choice = "random"     # OSM server: "random", "de", "fr", etc.
+cleaning_level = 0                    # 0=keep all, 1=normal, 2=clean more, 3=clean all
+overpass_server_choice = "ku"         # OSM server: "random", "de", "fr", "ku", etc.
 skip_downloads = false                # Skip imagery download (DSF only)
 skip_converts = false                 # Skip DDS conversion
-max_download_slots = 1                # Parallel orthophoto builds
-max_convert_slots = 4                 # Parallel DDS conversions
+max_download_slots = 96               # Parallel orthophoto builds
+max_convert_slots = 16                # Parallel DDS conversions
 check_tms_response = true             # Retry on HTTP errors
-http_timeout = 10.0                   # HTTP request timeout (seconds)
-max_connect_retries = 5               # Connection retry attempts
-max_baddata_retries = 5               # Server error retry attempts
+http_timeout = 60.0                   # HTTP request timeout (seconds)
+max_connect_retries = 30              # Connection retry attempts
+max_baddata_retries = 30              # Server error retry attempts
 ovl_exclude_pol = [0]                 # Exclude polygon types from overlay
 ovl_exclude_net = []                  # Exclude network types from overlay
-custom_scenery_dir = ""               # X-Plane Custom Scenery path
-custom_overlay_src = ""               # Overlay source directory
+custom_scenery_dir = "C:/Program Files (x86)/Steam/steamapps/common/X-Plane 12/Custom Scenery"
+custom_overlay_src = "C:/Program Files (x86)/Steam/steamapps/common/X-Plane 12/Global Scenery/X-Plane 12 Global Scenery"
 custom_overlay_src_alternate = ""     # Alternate overlay source
 
 # ============================================================================
@@ -82,21 +82,21 @@ water_smoothing = 10                  # Inland water smoothing passes
 iterate = 0                           # Mesh refinement iterations
 
 # --- Masks ---
-mask_zl = 14                          # Mask zoom level (14-16)
+mask_zl = 16                          # Mask zoom level (14-16)
 masks_width = 100                     # Mask extent from coastline (meters)
 masking_mode = "sand"                 # Mask type: "sand", "rocks", "3steps"
 use_masks_for_inland = false          # Apply masks to inland water
-imprint_masks_to_dds = false          # Embed masks in DDS textures
+imprint_masks_to_dds = true           # Embed masks in DDS textures
 distance_masks_too = false            # Build distance masks
-masks_use_DEM_too = false             # Use DEM for mask precision
+masks_use_DEM_too = true              # Use DEM for mask precision
 masks_custom_extent = ""              # Custom mask extent file
 
 # --- DSF/Rendering ---
-cover_airports_with_highres = "False" # High-res airports: "False", "True", "ICAO"
+cover_airports_with_highres = "ICAO"  # High-res airports: "False", "True", "ICAO"
 cover_extent = 1.0                    # Airport coverage extent (km)
-cover_zl = 18                         # Airport coverage zoom level
+cover_zl = 19                         # Airport coverage zoom level
 sea_texture_blur = 0.0                # Sea texture blur radius (meters)
-water_tech = "XP11 + bathy"           # Water tech: "XP12", "XP11 + bathy"
+water_tech = "XP12"                   # Water tech: "XP12", "XP11 + bathy"
 ratio_water = 0.25                    # Inland water transparency (0-1)
 ratio_bathy = 1.0                     # Bathymetry multiplier (0-1)
 normal_map_strength = 1.0             # Normal map intensity
