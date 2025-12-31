@@ -74,9 +74,8 @@ def write_ortho4xp_cfg(config: Config) -> None:
     lines.append(f"custom_overlay_src_alternate={app.custom_overlay_src_alternate}")
 
     # Tile settings (as global defaults)
+    # Note: default_website and default_zl are tile-only, not valid in global config
     tile = config.tile
-    lines.append(f"default_website={tile.default_website}")
-    lines.append(f"default_zl={tile.default_zl}")
     lines.append(f"curvature_tol={tile.curvature_tol}")
     lines.append(f"apt_curv_tol={tile.apt_curv_tol}")
     lines.append(f"apt_curv_ext={tile.apt_curv_ext}")
@@ -207,7 +206,6 @@ def create_ortho4xp_callbacks(output_dir: Path) -> dict:
         # Apply custom DEM if found
         if custom_dem:
             tile.custom_dem = str(custom_dem)
-            tile.iterate = 3
 
         tile.write_to_config()
         return tile
