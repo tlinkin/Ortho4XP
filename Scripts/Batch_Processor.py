@@ -17,6 +17,9 @@ Scripts_dir = Path(__file__).resolve().parent
 sys.path.insert(0, str(Scripts_dir))
 sys.path.insert(0, str(Ortho4XP_dir / "src"))
 
+# Change to Ortho4XP root (required by O4_File_Names path resolution)
+os.chdir(Ortho4XP_dir)
+
 # Import batch processing modules
 from batch import (
     Config,
