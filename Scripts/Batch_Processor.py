@@ -96,8 +96,11 @@ def init_ortho4xp(config: Config | None = None) -> bool:
         return False
 
 
-def create_ortho4xp_callbacks() -> dict:
+def create_ortho4xp_callbacks(output_dir: Path) -> dict:
     """Create callbacks that use Ortho4XP processing functions.
+
+    Args:
+        output_dir: Output directory for generated tiles
 
     Returns:
         Dict of processing callbacks
@@ -111,25 +114,28 @@ def create_ortho4xp_callbacks() -> dict:
 
     def build_poly_file(lat: int, lon: int, tile_cfg, custom_dem: Path | None):
         tile = _create_tile(lat, lon, tile_cfg, custom_dem)
-        VMAP.build_poly_file(tile)
+        if not VMAP.build_poly_file(tile):
+            raise RuntimeError("build_poly_file failed")
 
     def build_mesh(lat: int, lon: int, tile_cfg, custom_dem: Path | None):
         tile = _create_tile(lat, lon, tile_cfg, custom_dem)
-        MESH.build_mesh(tile)
+        if not MESH.build_mesh(tile):
+            raise RuntimeError("build_mesh failed")
 
     def build_masks(lat: int, lon: int, tile_cfg, custom_dem: Path | None):
         tile = _create_tile(lat, lon, tile_cfg, custom_dem)
-        MASK.build_masks(tile)
+        if not MASK.build_masks(tile):
+            raise RuntimeError("build_masks failed")
 
     def build_tile(lat: int, lon: int, tile_cfg, custom_dem: Path | None):
         tile = _create_tile(lat, lon, tile_cfg, custom_dem)
-        TILE.build_tile(tile)
+        if not TILE.build_tile(tile):
+            raise RuntimeError("build_tile failed")
         OVL.build_overlay(lat, lon)
 
     def _create_tile(lat: int, lon: int, tile_cfg, custom_dem: Path | None):
         """Create an Ortho4XP Tile object with config applied."""
-        output_dir = str(tile_cfg.output_dir) if hasattr(tile_cfg, 'output_dir') else ""
-        tile = CFG.Tile(lat, lon, output_dir)
+        tile = CFG.Tile(lat, lon, str(output_dir))
         tile.make_dirs()
         tile.read_from_config(use_global=True)
 
@@ -221,7 +227,7 @@ def main(
     if not dry_run:
         if not init_ortho4xp(cfg):
             raise typer.Exit(code=1)
-        callbacks = create_ortho4xp_callbacks()
+        callbacks = create_ortho4xp_callbacks(cfg.batch.output_dir)
 
     # Progress callbacks
     def on_tile_start(lat: int, lon: int):
