@@ -163,6 +163,8 @@ def process_tile(
         return True
 
     except Exception as e:
+        # Print error so user can see what failed
+        print(f"ERROR: {e}")
         # Get last completed step
         tile_state = state.tiles.get(tile_id)
         last_step = tile_state.last_step if tile_state else None
