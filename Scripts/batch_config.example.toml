@@ -41,7 +41,7 @@ tiles = [
 [app]
 verbosity = 1                         # 0=quiet, 1=normal, 2=verbose, 3=debug
 cleaning_level = 0                    # 0=keep all, 1=normal, 2=clean more, 3=clean all
-overpass_server_choice = "ku"         # OSM server: "random", "de", "fr", "ku", etc.
+overpass_server_choice = "KU"         # OSM server: "random", "DE", "KU", "RU1", "RU2", "JP"
 skip_downloads = false                # Skip imagery download (DSF only)
 skip_converts = false                 # Skip DDS conversion
 max_download_slots = 96               # Parallel orthophoto builds

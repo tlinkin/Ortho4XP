@@ -44,7 +44,7 @@ tiles = [[45, -122], [46, -123]]
 [app]
 verbosity = 2
 cleaning_level = 2
-overpass_server_choice = "de"
+overpass_server_choice = "DE"
 skip_downloads = false
 skip_converts = false
 max_download_slots = 2
