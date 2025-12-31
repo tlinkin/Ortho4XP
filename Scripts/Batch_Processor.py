@@ -135,7 +135,11 @@ def create_ortho4xp_callbacks(output_dir: Path) -> dict:
 
     def _create_tile(lat: int, lon: int, tile_cfg, custom_dem: Path | None):
         """Create an Ortho4XP Tile object with config applied."""
-        tile = CFG.Tile(lat, lon, str(output_dir))
+        # Ensure trailing slash so build_dir creates tile subdirectory
+        output_path = str(output_dir)
+        if not output_path.endswith(("/", "\\")):
+            output_path += "/"
+        tile = CFG.Tile(lat, lon, output_path)
         tile.make_dirs()
         tile.read_from_config(use_global=True)
 
