@@ -168,22 +168,22 @@ def create_ortho4xp_callbacks(output_dir: Path) -> dict:
 
     def build_poly_file(lat: int, lon: int, tile_cfg, custom_dem: Path | None):
         tile = _create_tile(lat, lon, tile_cfg, custom_dem)
-        if not VMAP.build_poly_file(tile):
+        if VMAP.build_poly_file(tile) == 0:
             raise RuntimeError("build_poly_file failed")
 
     def build_mesh(lat: int, lon: int, tile_cfg, custom_dem: Path | None):
         tile = _create_tile(lat, lon, tile_cfg, custom_dem)
-        if not MESH.build_mesh(tile):
+        if MESH.build_mesh(tile) == 0:
             raise RuntimeError("build_mesh failed")
 
     def build_masks(lat: int, lon: int, tile_cfg, custom_dem: Path | None):
         tile = _create_tile(lat, lon, tile_cfg, custom_dem)
-        if not MASK.build_masks(tile):
+        if MASK.build_masks(tile) == 0:
             raise RuntimeError("build_masks failed")
 
     def build_tile(lat: int, lon: int, tile_cfg, custom_dem: Path | None):
         tile = _create_tile(lat, lon, tile_cfg, custom_dem)
-        if not TILE.build_tile(tile):
+        if TILE.build_tile(tile) == 0:
             raise RuntimeError("build_tile failed")
         OVL.build_overlay(lat, lon)
 
