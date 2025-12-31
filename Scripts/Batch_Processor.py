@@ -41,11 +41,40 @@ app = typer.Typer(
 )
 
 
+def apply_app_config(app_config) -> None:
+    """Apply AppConfig settings to Ortho4XP globals.
+
+    Args:
+        app_config: AppConfig object with settings
+    """
+    import O4_Imagery_Utils as IMG
+    import O4_OSM_Utils as OSM
+    import O4_Tile_Utils as TILE
+    import O4_UI_Utils as UI
+
+    # UI settings
+    UI.verbosity = app_config.verbosity
+    UI.cleaning_level = app_config.cleaning_level
+
+    # OSM settings
+    OSM.overpass_server_choice = app_config.overpass_server_choice
+
+    # Tile/imagery settings
+    TILE.skip_downloads = app_config.skip_downloads
+    TILE.skip_converts = app_config.skip_converts
+    IMG.max_download_slots = app_config.max_download_slots
+    IMG.max_convert_slots = app_config.max_convert_slots
+    IMG.check_tms_response = app_config.check_tms_response
+    IMG.http_timeout = app_config.http_timeout
+    IMG.max_connect_retries = app_config.max_connect_retries
+    IMG.max_baddata_retries = app_config.max_baddata_retries
+
+
 def init_ortho4xp(config: Config | None = None) -> bool:
     """Initialize Ortho4XP environment.
 
     Args:
-        config: Optional batch config to apply directory overrides
+        config: Optional batch config to apply directory and app settings
 
     Returns:
         True if initialization succeeded, False otherwise
@@ -56,6 +85,7 @@ def init_ortho4xp(config: Config | None = None) -> bool:
         # Apply custom directory paths before anything else
         if config:
             apply_directory_overrides(config.batch)
+            apply_app_config(config.app)
 
         sys.path.append(FNAMES.Provider_dir)
 
