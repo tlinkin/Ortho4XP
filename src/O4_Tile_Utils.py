@@ -93,7 +93,7 @@ def download_textures(
         producer_done_event = threading.Event()
         producer_done_event.set()
 
-    workers_list = parallel_launch(_download_task, download_queue, worker_count)
+    workers_list, _success = parallel_launch(_download_task, download_queue, worker_count)
 
     while not producer_done_event.is_set() and not UI.red_flag:
         time.sleep(0.05)

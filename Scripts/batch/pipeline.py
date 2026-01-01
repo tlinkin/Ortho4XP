@@ -10,6 +10,7 @@ from __future__ import annotations
 import multiprocessing as mp
 import os
 import sys
+import traceback
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -124,6 +125,8 @@ def _worker_process(
             result_queue.put((tile_id, True, None))
 
         except Exception as e:
+            tb = traceback.format_exc()
+            print(f"ERROR in {tile_id}:\n{tb}")
             result_queue.put((tile_id, False, str(e)))
 
 
