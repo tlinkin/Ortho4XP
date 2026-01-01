@@ -46,6 +46,11 @@ from .tiles import (
     list_tiles_for_geometry,
 )
 
+from .ortho4xp_init import (
+    init_ortho4xp,
+    batch_config_to_dict,
+)
+
 __all__ = [
     # Config
     "Config",
@@ -85,4 +90,7 @@ __all__ = [
     "list_tiles_for_countries",
     "list_tiles_for_continent",
     "list_tiles_for_geometry",
+    # Ortho4XP Init
+    "init_ortho4xp",
+    "batch_config_to_dict",
 ]

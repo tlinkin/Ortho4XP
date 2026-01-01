@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
@@ -19,24 +18,6 @@ from .state import (
     mark_tile_started,
 )
 from .tiles import list_tiles_for_countries
-
-
-@dataclass
-class TileProcessor:
-    """Handles processing of a single tile."""
-
-    lat: int
-    lon: int
-    config: Config
-    output_dir: Path
-    dem_dir: Path
-
-    # Processing callbacks (for dependency injection/testing)
-    build_poly_file: Callable | None = None
-    build_mesh: Callable | None = None
-    build_masks: Callable | None = None
-    build_tile: Callable | None = None
-    build_overlay: Callable | None = None
 
 
 def build_tile_list(config: Config) -> list[tuple[int, int]]:

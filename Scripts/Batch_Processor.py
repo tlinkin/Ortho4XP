@@ -25,7 +25,9 @@ os.chdir(Ortho4XP_dir)
 from batch import (
     Config,
     apply_directory_overrides,
+    batch_config_to_dict,
     compute_config_hash,
+    init_ortho4xp as _init_ortho4xp_shared,
     load_config,
     load_state,
     make_tile_id,
@@ -105,50 +107,8 @@ def init_ortho4xp(config: Config | None = None) -> bool:
     Returns:
         True if initialization succeeded, False otherwise
     """
-    try:
-        import O4_File_Names as FNAMES
-
-        # Apply custom directory paths before anything else
-        if config:
-            apply_directory_overrides(config.batch)
-
-        sys.path.append(FNAMES.Provider_dir)
-
-        # Check utils directory
-        if not os.path.isdir(FNAMES.Utils_dir):
-            print("Error: Missing utils directory, check your install.")
-            return False
-
-        # Create required directories
-        for directory in (
-            FNAMES.Preview_dir,
-            FNAMES.Provider_dir,
-            FNAMES.Extent_dir,
-            FNAMES.Filter_dir,
-            FNAMES.OSM_dir,
-            FNAMES.Mask_dir,
-            FNAMES.Imagery_dir,
-            FNAMES.Elevation_dir,
-            FNAMES.Geotiff_dir,
-            FNAMES.Patch_dir,
-            FNAMES.Tile_dir,
-            FNAMES.Tmp_dir,
-        ):
-            if not os.path.isdir(directory):
-                os.makedirs(directory, exist_ok=True)
-
-        # Initialize providers
-        import O4_Imagery_Utils as IMG
-
-        IMG.initialize_extents_dict()
-        IMG.initialize_color_filters_dict()
-        IMG.initialize_providers_dict()
-        IMG.initialize_combined_providers_dict()
-
-        return True
-    except ImportError as e:
-        print(f"Error: Failed to import Ortho4XP modules: {e}")
-        return False
+    config_dict = batch_config_to_dict(config.batch) if config else None
+    return _init_ortho4xp_shared(str(Ortho4XP_dir), config_dict)
 
 
 def create_ortho4xp_callbacks(output_dir: Path) -> dict:

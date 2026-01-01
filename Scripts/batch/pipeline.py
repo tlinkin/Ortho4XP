@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from .config import Config, TileConfig, get_tile_config
+from .ortho4xp_init import init_ortho4xp
 from .runner import find_dem_for_tile
 from .state import (
     BatchState,
@@ -63,58 +64,11 @@ def _worker_process(
         ortho4xp_dir: Path to Ortho4XP directory
         config_dict: Serialized batch config for directory overrides
     """
-    # Change to Ortho4XP directory
-    os.chdir(ortho4xp_dir)
-    sys.path.insert(0, ortho4xp_dir)
-    sys.path.insert(0, str(Path(ortho4xp_dir) / "src"))
-
-    # Import and initialize Ortho4XP in this process
+    # Initialize Ortho4XP in this process using shared init logic
     try:
-        import O4_File_Names as FNAMES
-
-        # Apply directory overrides if specified
-        if config_dict.get("osm_dir"):
-            FNAMES.OSM_dir = config_dict["osm_dir"]
-        if config_dict.get("elevation_dir"):
-            FNAMES.Elevation_dir = config_dict["elevation_dir"]
-        if config_dict.get("orthophotos_dir"):
-            FNAMES.Imagery_dir = config_dict["orthophotos_dir"]
-        if config_dict.get("masks_dir"):
-            FNAMES.Mask_dir = config_dict["masks_dir"]
-        if config_dict.get("geotiffs_dir"):
-            FNAMES.Geotiff_dir = config_dict["geotiffs_dir"]
-        if config_dict.get("patches_dir"):
-            FNAMES.Patch_dir = config_dict["patches_dir"]
-        if config_dict.get("tmp_dir"):
-            FNAMES.Tmp_dir = config_dict["tmp_dir"]
-
-        sys.path.append(FNAMES.Provider_dir)
-
-        # Create directories
-        for directory in (
-            FNAMES.Preview_dir,
-            FNAMES.Provider_dir,
-            FNAMES.Extent_dir,
-            FNAMES.Filter_dir,
-            FNAMES.OSM_dir,
-            FNAMES.Mask_dir,
-            FNAMES.Imagery_dir,
-            FNAMES.Elevation_dir,
-            FNAMES.Geotiff_dir,
-            FNAMES.Patch_dir,
-            FNAMES.Tile_dir,
-            FNAMES.Tmp_dir,
-        ):
-            if not os.path.isdir(directory):
-                os.makedirs(directory, exist_ok=True)
-
-        # Initialize providers
-        import O4_Imagery_Utils as IMG
-
-        IMG.initialize_extents_dict()
-        IMG.initialize_color_filters_dict()
-        IMG.initialize_providers_dict()
-        IMG.initialize_combined_providers_dict()
+        if not init_ortho4xp(ortho4xp_dir, config_dict, skip_validation=True):
+            result_queue.put(("__init__", False, "Ortho4XP initialization failed"))
+            return
 
         # Import processing modules
         import O4_Config_Utils as CFG

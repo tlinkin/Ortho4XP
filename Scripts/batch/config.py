@@ -8,6 +8,8 @@ from dataclasses import dataclass, field, fields, replace
 from pathlib import Path
 from typing import Any
 
+from .state import make_tile_id
+
 
 class ConfigError(Exception):
     """Exception raised for configuration errors."""
@@ -159,21 +161,6 @@ def expand_path(path: str) -> Path:
     return Path(expanded)
 
 
-def _make_tile_id(lat: int, lon: int) -> str:
-    """Create tile ID string from coordinates.
-
-    Args:
-        lat: Latitude (-90 to 90)
-        lon: Longitude (-180 to 180)
-
-    Returns:
-        Tile ID string like "+45-122" or "-45+010"
-    """
-    lat_sign = "+" if lat >= 0 else ""
-    lon_sign = "+" if lon >= 0 else ""
-    return f"{lat_sign}{lat}{lon_sign}{lon:03d}"
-
-
 def _parse_tiles_list(tiles_data: list) -> list[tuple[int, int]]:
     """Parse tiles from TOML list format to tuples.
 
@@ -298,7 +285,7 @@ def get_tile_config(config: Config, lat: int, lon: int) -> TileConfig:
 
     # Check for override using various ID formats
     tile_ids = [
-        _make_tile_id(lat, lon),  # +45-122
+        make_tile_id(lat, lon),  # +45-122
         f"{'+' if lat >= 0 else ''}{lat}{'+' if lon >= 0 else ''}{lon}",  # +45-122
         f"{'+' if lat >= 0 else ''}{lat}{'+' if lon >= 0 else ''}{lon:03d}",  # +45-122
     ]
