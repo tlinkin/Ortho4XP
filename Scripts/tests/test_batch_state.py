@@ -17,6 +17,7 @@ from batch.state import (
     mark_tile_completed,
     mark_tile_failed,
     mark_tile_started,
+    parse_tile_id,
     save_state,
     update_run_metadata,
 )
@@ -263,6 +264,41 @@ class TestMakeTileId:
         """Handles mixed positive/negative."""
         assert make_tile_id(45, -122) == "+45-122"
         assert make_tile_id(-45, 10) == "-45+010"
+
+
+class TestParseTileId:
+    """Tests for tile ID parsing."""
+
+    def test_parse_positive_coords(self):
+        """Parses positive coordinates."""
+        assert parse_tile_id("+45+010") == (45, 10)
+
+    def test_parse_negative_coords(self):
+        """Parses negative coordinates."""
+        assert parse_tile_id("-45-122") == (-45, -122)
+
+    def test_parse_mixed_coords(self):
+        """Parses mixed positive/negative."""
+        assert parse_tile_id("+45-122") == (45, -122)
+        assert parse_tile_id("-45+010") == (-45, 10)
+
+    def test_roundtrip(self):
+        """make_tile_id and parse_tile_id are inverses."""
+        coords = [(45, 10), (-45, -122), (45, -122), (-45, 10), (0, 0)]
+        for lat, lon in coords:
+            tile_id = make_tile_id(lat, lon)
+            parsed_lat, parsed_lon = parse_tile_id(tile_id)
+            assert (parsed_lat, parsed_lon) == (lat, lon)
+
+    def test_invalid_format(self):
+        """Raises ValueError for invalid formats."""
+        import pytest
+        with pytest.raises(ValueError, match="Invalid tile ID"):
+            parse_tile_id("invalid")
+        with pytest.raises(ValueError, match="Invalid tile ID"):
+            parse_tile_id("abc123")
+        with pytest.raises(ValueError, match="Invalid tile ID"):
+            parse_tile_id("")
 
 
 class TestMarkStepCompleted:

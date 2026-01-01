@@ -357,30 +357,3 @@ def validate_config(config: Config) -> list[str]:
             errors.append(f"{name} parent directory does not exist: {path.parent}")
 
     return errors
-
-
-def apply_directory_overrides(batch_config: BatchConfig) -> None:
-    """Apply custom directory paths to O4_File_Names module.
-
-    Must be called after changing to Ortho4XP directory and before
-    initializing Ortho4XP (creating directories).
-
-    Args:
-        batch_config: Batch configuration with optional directory overrides
-    """
-    import O4_File_Names as FNAMES
-
-    if batch_config.osm_dir:
-        FNAMES.OSM_dir = str(batch_config.osm_dir)
-    if batch_config.elevation_dir:
-        FNAMES.Elevation_dir = str(batch_config.elevation_dir)
-    if batch_config.orthophotos_dir:
-        FNAMES.Imagery_dir = str(batch_config.orthophotos_dir)
-    if batch_config.masks_dir:
-        FNAMES.Mask_dir = str(batch_config.masks_dir)
-    if batch_config.geotiffs_dir:
-        FNAMES.Geotiff_dir = str(batch_config.geotiffs_dir)
-    if batch_config.patches_dir:
-        FNAMES.Patch_dir = str(batch_config.patches_dir)
-    if batch_config.tmp_dir:
-        FNAMES.Tmp_dir = str(batch_config.tmp_dir)

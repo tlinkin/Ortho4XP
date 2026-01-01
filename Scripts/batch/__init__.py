@@ -12,7 +12,6 @@ from .config import (
     expand_path,
     get_tile_config,
     validate_config,
-    apply_directory_overrides,
 )
 
 from .state import (
@@ -24,6 +23,7 @@ from .state import (
     load_state,
     save_state,
     make_tile_id,
+    parse_tile_id,
     mark_tile_started,
     mark_tile_completed,
     mark_tile_failed,
@@ -38,6 +38,7 @@ from .runner import (
     apply_tile_overrides,
     process_tile,
     run_batch,
+    copy_overlays,
 )
 
 from .tiles import (
@@ -48,7 +49,10 @@ from .tiles import (
 
 from .ortho4xp_init import (
     init_ortho4xp,
+    apply_directory_overrides,
     batch_config_to_dict,
+    write_ortho4xp_cfg,
+    create_ortho4xp_callbacks,
 )
 
 __all__ = [
@@ -74,6 +78,7 @@ __all__ = [
     "load_state",
     "save_state",
     "make_tile_id",
+    "parse_tile_id",
     "mark_tile_started",
     "mark_tile_completed",
     "mark_tile_failed",
@@ -86,6 +91,7 @@ __all__ = [
     "apply_tile_overrides",
     "process_tile",
     "run_batch",
+    "copy_overlays",
     # Tiles
     "list_tiles_for_countries",
     "list_tiles_for_continent",
@@ -93,4 +99,6 @@ __all__ = [
     # Ortho4XP Init
     "init_ortho4xp",
     "batch_config_to_dict",
+    "write_ortho4xp_cfg",
+    "create_ortho4xp_callbacks",
 ]

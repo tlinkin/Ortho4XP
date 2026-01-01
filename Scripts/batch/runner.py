@@ -239,3 +239,21 @@ def run_batch(
             on_tile_complete(lat, lon, success)
 
     return len(to_process), succeeded, failed
+
+
+def copy_overlays(ortho4xp_dir: Path, output_dir: Path) -> None:
+    """Copy overlay files from Ortho4XP to output directory.
+
+    Args:
+        ortho4xp_dir: Path to Ortho4XP root directory
+        output_dir: Output directory for batch processing
+    """
+    import shutil
+
+    source_overlay_dir = ortho4xp_dir / "yOrtho4XP_Overlays"
+    target_overlay_dir = output_dir / "yOrtho4XP_Overlays"
+
+    if source_overlay_dir.exists():
+        if target_overlay_dir.exists():
+            shutil.rmtree(target_overlay_dir)
+        shutil.copytree(source_overlay_dir, target_overlay_dir)

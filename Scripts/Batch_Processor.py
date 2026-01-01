@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import os
-import shutil
 import sys
 from pathlib import Path
 from typing import Annotated
@@ -24,9 +23,10 @@ os.chdir(Ortho4XP_dir)
 # Import batch processing modules
 from batch import (
     Config,
-    apply_directory_overrides,
     batch_config_to_dict,
     compute_config_hash,
+    copy_overlays as _copy_overlays,
+    create_ortho4xp_callbacks as _create_ortho4xp_callbacks,
     init_ortho4xp as _init_ortho4xp_shared,
     load_config,
     load_state,
@@ -35,6 +35,7 @@ from batch import (
     save_state,
     update_run_metadata,
     validate_config,
+    write_ortho4xp_cfg as _write_ortho4xp_cfg,
 )
 
 app = typer.Typer(
@@ -46,56 +47,9 @@ app = typer.Typer(
 def write_ortho4xp_cfg(config: Config) -> None:
     """Write Ortho4XP.cfg from batch config before module imports.
 
-    This must be called before importing Ortho4XP modules so they
-    pick up the settings on load.
-
-    Args:
-        config: Batch configuration
+    Wrapper around batch.ortho4xp_init.write_ortho4xp_cfg.
     """
-    cfg_path = Ortho4XP_dir / "Ortho4XP.cfg"
-
-    lines = []
-
-    # App settings
-    app = config.app
-    lines.append(f"verbosity={app.verbosity}")
-    lines.append(f"cleaning_level={app.cleaning_level}")
-    lines.append(f"overpass_server_choice={app.overpass_server_choice}")
-    lines.append(f"skip_downloads={app.skip_downloads}")
-    lines.append(f"skip_converts={app.skip_converts}")
-    lines.append(f"max_download_slots={app.max_download_slots}")
-    lines.append(f"max_convert_slots={app.max_convert_slots}")
-    lines.append(f"masks_build_slots={app.masks_build_slots}")
-    lines.append(f"check_tms_response={app.check_tms_response}")
-    lines.append(f"http_timeout={app.http_timeout}")
-    lines.append(f"max_connect_retries={app.max_connect_retries}")
-    lines.append(f"max_baddata_retries={app.max_baddata_retries}")
-    lines.append(f"ovl_exclude_pol={app.ovl_exclude_pol}")
-    lines.append(f"ovl_exclude_net={app.ovl_exclude_net}")
-    lines.append(f"custom_scenery_dir={app.custom_scenery_dir}")
-    lines.append(f"custom_overlay_src={app.custom_overlay_src}")
-    lines.append(f"custom_overlay_src_alternate={app.custom_overlay_src_alternate}")
-
-    # Tile settings (as global defaults)
-    # Note: default_website and default_zl are tile-only, not valid in global config
-    tile = config.tile
-    lines.append(f"curvature_tol={tile.curvature_tol}")
-    lines.append(f"apt_curv_tol={tile.apt_curv_tol}")
-    lines.append(f"apt_curv_ext={tile.apt_curv_ext}")
-    lines.append(f"coast_curv_tol={tile.coast_curv_tol}")
-    lines.append(f"coast_curv_ext={tile.coast_curv_ext}")
-    lines.append(f"limit_tris={tile.limit_tris}")
-    lines.append(f"min_angle={tile.min_angle}")
-    lines.append(f"mesh_zl={tile.mesh_zl}")
-    lines.append(f"mask_zl={tile.mask_zl}")
-    lines.append(f"clean_bad_geometries={tile.clean_bad_geometries}")
-    lines.append(f"masks_width={tile.masks_width}")
-    lines.append(f"masking_mode={tile.masking_mode}")
-    lines.append(f"use_masks_for_inland={tile.use_masks_for_inland}")
-    lines.append(f"imprint_masks_to_dds={tile.imprint_masks_to_dds}")
-    lines.append(f"fill_nodata={tile.fill_nodata}")
-
-    cfg_path.write_text("\n".join(lines) + "\n")
+    _write_ortho4xp_cfg(str(Ortho4XP_dir), config.app, config.tile)
 
 
 def init_ortho4xp(config: Config | None = None) -> bool:
@@ -114,80 +68,17 @@ def init_ortho4xp(config: Config | None = None) -> bool:
 def create_ortho4xp_callbacks(output_dir: Path) -> dict:
     """Create callbacks that use Ortho4XP processing functions.
 
-    Args:
-        output_dir: Output directory for generated tiles
-
-    Returns:
-        Dict of processing callbacks
+    Wrapper around batch.ortho4xp_init.create_ortho4xp_callbacks.
     """
-    import O4_Config_Utils as CFG
-    import O4_Mask_Utils as MASK
-    import O4_Mesh_Utils as MESH
-    import O4_Overlay_Utils as OVL
-    import O4_Tile_Utils as TILE
-    import O4_Vector_Map as VMAP
-
-    def build_poly_file(lat: int, lon: int, tile_cfg, custom_dem: Path | None):
-        tile = _create_tile(lat, lon, tile_cfg, custom_dem)
-        if VMAP.build_poly_file(tile) == 0:
-            raise RuntimeError("build_poly_file failed")
-
-    def build_mesh(lat: int, lon: int, tile_cfg, custom_dem: Path | None):
-        tile = _create_tile(lat, lon, tile_cfg, custom_dem)
-        if MESH.build_mesh(tile) == 0:
-            raise RuntimeError("build_mesh failed")
-
-    def build_masks(lat: int, lon: int, tile_cfg, custom_dem: Path | None):
-        tile = _create_tile(lat, lon, tile_cfg, custom_dem)
-        if MASK.build_masks(tile) == 0:
-            raise RuntimeError("build_masks failed")
-
-    def build_tile(lat: int, lon: int, tile_cfg, custom_dem: Path | None):
-        tile = _create_tile(lat, lon, tile_cfg, custom_dem)
-        if TILE.build_tile(tile) == 0:
-            raise RuntimeError("build_tile failed")
-        OVL.build_overlay(lat, lon)
-
-    def _create_tile(lat: int, lon: int, tile_cfg, custom_dem: Path | None):
-        """Create an Ortho4XP Tile object with config applied."""
-        # Ensure trailing slash so build_dir creates tile subdirectory
-        output_path = str(output_dir)
-        if not output_path.endswith(("/", "\\")):
-            output_path += "/"
-        tile = CFG.Tile(lat, lon, output_path)
-        tile.make_dirs()
-        tile.read_from_config(use_global=True)
-
-        # Apply tile config values
-        for field in tile_cfg.__dataclass_fields__:
-            value = getattr(tile_cfg, field)
-            if hasattr(tile, field):
-                setattr(tile, field, value)
-
-        # Apply custom DEM if found
-        if custom_dem:
-            tile.custom_dem = str(custom_dem)
-
-        tile.write_to_config()
-        return tile
-
-    return {
-        "build_poly_file": build_poly_file,
-        "build_mesh": build_mesh,
-        "build_masks": build_masks,
-        "build_tile": build_tile,
-    }
+    return _create_ortho4xp_callbacks(str(output_dir))
 
 
 def copy_overlays(config: Config) -> None:
-    """Copy overlay files to output directory."""
-    source_overlay_dir = Ortho4XP_dir / "yOrtho4XP_Overlays"
-    target_overlay_dir = config.batch.output_dir / "yOrtho4XP_Overlays"
+    """Copy overlay files to output directory.
 
-    if source_overlay_dir.exists():
-        if target_overlay_dir.exists():
-            shutil.rmtree(target_overlay_dir)
-        shutil.copytree(source_overlay_dir, target_overlay_dir)
+    Wrapper around batch.runner.copy_overlays.
+    """
+    _copy_overlays(Ortho4XP_dir, config.batch.output_dir)
 
 
 @app.command()

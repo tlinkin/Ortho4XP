@@ -102,6 +102,28 @@ def make_tile_id(lat: int, lon: int) -> str:
     return f"{lat_sign}{lat}{lon_sign}{lon:03d}"
 
 
+def parse_tile_id(tile_id: str) -> tuple[int, int]:
+    """Parse tile ID string to (lat, lon) tuple.
+
+    Inverse of make_tile_id().
+
+    Args:
+        tile_id: Tile ID like "+45-122" or "-45+010"
+
+    Returns:
+        Tuple of (lat, lon) integers
+
+    Raises:
+        ValueError: If tile_id format is invalid
+    """
+    import re
+    # Match: optional sign + digits, then required sign + digits
+    match = re.match(r'^([+-]?\d+)([+-]\d+)$', tile_id)
+    if not match:
+        raise ValueError(f"Invalid tile ID format: {tile_id}")
+    return int(match.group(1)), int(match.group(2))
+
+
 def load_state(path: Path) -> BatchState:
     """Load state from TOML file.
 

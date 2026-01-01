@@ -21,6 +21,7 @@ from .state import (
     BatchState,
     ProcessingStep,
     make_tile_id,
+    parse_tile_id,
     load_state,
     save_state,
     mark_tile_completed,
@@ -272,15 +273,11 @@ class PipelineManager:
 
             # Parse tile_id back to lat/lon for callback
             if self.on_tile_complete:
-                # Parse "+45-122" format
-                parts = tile_id.replace("+", " +").replace("-", " -").split()
-                if len(parts) >= 2:
-                    try:
-                        lat = int(parts[0])
-                        lon = int(parts[1])
-                        self.on_tile_complete(lat, lon, success)
-                    except ValueError:
-                        pass
+                try:
+                    lat, lon = parse_tile_id(tile_id)
+                    self.on_tile_complete(lat, lon, success)
+                except ValueError:
+                    pass
 
         # Wait for workers to finish
         for p in workers:
