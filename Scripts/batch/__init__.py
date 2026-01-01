@@ -35,7 +35,6 @@ from .state import (
 from .runner import (
     build_tile_list,
     find_dem_for_tile,
-    apply_tile_overrides,
     process_tile,
     run_batch,
     copy_overlays,
@@ -49,7 +48,6 @@ from .tiles import (
 
 from .ortho4xp_init import (
     init_ortho4xp,
-    apply_directory_overrides,
     batch_config_to_dict,
     write_ortho4xp_cfg,
     create_ortho4xp_callbacks,
@@ -68,7 +66,6 @@ __all__ = [
     "expand_path",
     "get_tile_config",
     "validate_config",
-    "apply_directory_overrides",
     # State
     "BatchState",
     "TileState",
@@ -88,7 +85,6 @@ __all__ = [
     # Runner
     "build_tile_list",
     "find_dem_for_tile",
-    "apply_tile_overrides",
     "process_tile",
     "run_batch",
     "copy_overlays",

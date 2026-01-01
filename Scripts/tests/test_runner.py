@@ -11,9 +11,9 @@ from batch.config import (
     Config,
     SourcesConfig,
     TileConfig,
+    get_tile_config,
 )
 from batch.runner import (
-    apply_tile_overrides,
     build_tile_list,
     find_dem_for_tile,
     process_tile,
@@ -163,10 +163,10 @@ class TestFindDemForTile:
         assert result == dem_file
 
 
-class TestApplyTileOverrides:
+class TestGetTileConfig:
     """Tests for per-tile config overrides."""
 
-    def test_apply_tile_overrides(self, tmp_path):
+    def test_tile_override_applied(self, tmp_path):
         """Per-tile config applied correctly."""
         output_dir = tmp_path / "output"
         dem_dir = tmp_path / "dem"
@@ -183,10 +183,10 @@ class TestApplyTileOverrides:
             },
         )
 
-        overrides = apply_tile_overrides(config, 45, -122)
-        assert overrides["iterate"] == 3
-        assert overrides["custom_dem"] == "/path/to/dem.hgt"
-        assert overrides["default_zl"] == 16  # Non-overridden value
+        tile_cfg = get_tile_config(config, 45, -122)
+        assert tile_cfg.iterate == 3
+        assert tile_cfg.custom_dem == "/path/to/dem.hgt"
+        assert tile_cfg.default_zl == 16  # Non-overridden value
 
     def test_no_override_gets_defaults(self, tmp_path):
         """Non-overridden tile gets base tile config."""
@@ -203,9 +203,9 @@ class TestApplyTileOverrides:
             tile_overrides={"+45-122": {"iterate": 3}},  # Different tile
         )
 
-        overrides = apply_tile_overrides(config, 46, -123)
-        assert overrides["iterate"] == 0  # Default value
-        assert overrides["default_zl"] == 17
+        tile_cfg = get_tile_config(config, 46, -123)
+        assert tile_cfg.iterate == 0  # Default value
+        assert tile_cfg.default_zl == 17
 
 
 class TestProcessTile:

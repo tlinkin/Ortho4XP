@@ -70,8 +70,7 @@ class PipelineConfig:
     """Pipeline processing configuration."""
 
     enabled: bool = False  # Use pipelined batch processing
-    prep_workers: int = 2  # Parallel tiles in prep stage (OSM+mesh+masks)
-    dsf_workers: int = 1  # Parallel tiles in DSF stage (usually 1)
+    prep_workers: int = 2  # Parallel worker processes  # Parallel tiles in DSF stage (usually 1)
 
 
 @dataclass

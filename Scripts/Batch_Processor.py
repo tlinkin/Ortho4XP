@@ -22,12 +22,11 @@ os.chdir(Ortho4XP_dir)
 
 # Import batch processing modules
 from batch import (
-    Config,
     batch_config_to_dict,
     compute_config_hash,
-    copy_overlays as _copy_overlays,
-    create_ortho4xp_callbacks as _create_ortho4xp_callbacks,
-    init_ortho4xp as _init_ortho4xp_shared,
+    copy_overlays,
+    create_ortho4xp_callbacks,
+    init_ortho4xp,
     load_config,
     load_state,
     make_tile_id,
@@ -35,50 +34,13 @@ from batch import (
     save_state,
     update_run_metadata,
     validate_config,
-    write_ortho4xp_cfg as _write_ortho4xp_cfg,
+    write_ortho4xp_cfg,
 )
 
 app = typer.Typer(
     help="Batch tile processor for Ortho4XP",
     no_args_is_help=True,
 )
-
-
-def write_ortho4xp_cfg(config: Config) -> None:
-    """Write Ortho4XP.cfg from batch config before module imports.
-
-    Wrapper around batch.ortho4xp_init.write_ortho4xp_cfg.
-    """
-    _write_ortho4xp_cfg(str(Ortho4XP_dir), config.app, config.tile)
-
-
-def init_ortho4xp(config: Config | None = None) -> bool:
-    """Initialize Ortho4XP environment.
-
-    Args:
-        config: Optional batch config to apply directory overrides
-
-    Returns:
-        True if initialization succeeded, False otherwise
-    """
-    config_dict = batch_config_to_dict(config.batch) if config else None
-    return _init_ortho4xp_shared(str(Ortho4XP_dir), config_dict)
-
-
-def create_ortho4xp_callbacks(output_dir: Path) -> dict:
-    """Create callbacks that use Ortho4XP processing functions.
-
-    Wrapper around batch.ortho4xp_init.create_ortho4xp_callbacks.
-    """
-    return _create_ortho4xp_callbacks(str(output_dir))
-
-
-def copy_overlays(config: Config) -> None:
-    """Copy overlay files to output directory.
-
-    Wrapper around batch.runner.copy_overlays.
-    """
-    _copy_overlays(Ortho4XP_dir, config.batch.output_dir)
 
 
 @app.command()
@@ -135,10 +97,10 @@ def main(
     callbacks = None
     if not dry_run:
         # Write config BEFORE importing Ortho4XP modules
-        write_ortho4xp_cfg(cfg)
-        if not init_ortho4xp(cfg):
+        write_ortho4xp_cfg(str(Ortho4XP_dir), cfg.app, cfg.tile)
+        if not init_ortho4xp(str(Ortho4XP_dir), batch_config_to_dict(cfg.batch)):
             raise typer.Exit(code=1)
-        callbacks = create_ortho4xp_callbacks(cfg.batch.output_dir)
+        callbacks = create_ortho4xp_callbacks(str(cfg.batch.output_dir))
 
     # Progress callbacks
     def on_tile_start(lat: int, lon: int):
@@ -174,7 +136,7 @@ def main(
         save_state(state, state_path)
 
         # Copy overlays
-        copy_overlays(cfg)
+        copy_overlays(Ortho4XP_dir, cfg.batch.output_dir)
 
     # Print summary
     typer.echo(f"\nSummary: {total} tiles processed, {succeeded} succeeded, {failed} failed")

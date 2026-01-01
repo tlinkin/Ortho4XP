@@ -72,24 +72,6 @@ def find_dem_for_tile(lat: int, lon: int, dem_dir: Path) -> Path | None:
     return None
 
 
-def apply_tile_overrides(config: Config, lat: int, lon: int) -> dict:
-    """Get tile configuration with any overrides applied.
-
-    Args:
-        config: Root configuration
-        lat: Tile latitude
-        lon: Tile longitude
-
-    Returns:
-        Dictionary of tile configuration values
-    """
-    tile_cfg = get_tile_config(config, lat, lon)
-    return {
-        field: getattr(tile_cfg, field)
-        for field in tile_cfg.__dataclass_fields__
-    }
-
-
 def process_tile(
     lat: int,
     lon: int,
@@ -209,9 +191,7 @@ def run_batch(
             config=config,
             state=state,
             state_path=state_path,
-            callbacks=callbacks,
             max_prep=config.pipeline.prep_workers,
-            max_dsf=config.pipeline.dsf_workers,
             on_tile_start=on_tile_start,
             on_tile_complete=on_tile_complete,
         )

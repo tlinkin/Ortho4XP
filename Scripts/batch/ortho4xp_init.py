@@ -15,6 +15,44 @@ from pathlib import Path
 from typing import Any
 
 
+
+def create_configured_tile(lat: int, lon: int, output_dir: str, tile_cfg_dict: dict, custom_dem: str | None):
+    """Create an Ortho4XP Tile object with config applied.
+
+    Shared tile creation logic used by both sequential and parallel processing.
+
+    Args:
+        lat: Tile latitude
+        lon: Tile longitude
+        output_dir: Output directory path
+        tile_cfg_dict: Dict of tile config values to apply
+        custom_dem: Path to custom DEM file, or None
+
+    Returns:
+        Configured CFG.Tile object
+    """
+    import O4_Config_Utils as CFG
+
+    # Ensure trailing slash so build_dir creates tile subdirectory
+    output_path = str(output_dir)
+    if not output_path.endswith(("/", "\\")):
+        output_path += "/"
+    tile = CFG.Tile(lat, lon, output_path)
+    tile.make_dirs()
+    tile.read_from_config(use_global=True)
+
+    # Apply tile config values
+    for key, value in tile_cfg_dict.items():
+        if hasattr(tile, key):
+            setattr(tile, key, value)
+
+    # Apply custom DEM if found
+    if custom_dem:
+        tile.custom_dem = str(custom_dem)
+
+    tile.write_to_config()
+    return tile
+
 def setup_paths(ortho4xp_dir: str) -> None:
     """Configure sys.path and working directory for Ortho4XP imports.
 
@@ -222,56 +260,36 @@ def create_ortho4xp_callbacks(output_dir: str) -> dict:
     Returns:
         Dict of processing callbacks
     """
-    import O4_Config_Utils as CFG
     import O4_Mask_Utils as MASK
     import O4_Mesh_Utils as MESH
     import O4_Overlay_Utils as OVL
     import O4_Tile_Utils as TILE
     import O4_Vector_Map as VMAP
 
+    def _to_dict(tile_cfg):
+        """Convert TileConfig dataclass to dict."""
+        return {field: getattr(tile_cfg, field) for field in tile_cfg.__dataclass_fields__}
+
     def build_poly_file(lat: int, lon: int, tile_cfg, custom_dem):
-        tile = _create_tile(lat, lon, tile_cfg, custom_dem)
+        tile = create_configured_tile(lat, lon, output_dir, _to_dict(tile_cfg), custom_dem)
         if VMAP.build_poly_file(tile) == 0:
             raise RuntimeError("build_poly_file failed")
 
     def build_mesh(lat: int, lon: int, tile_cfg, custom_dem):
-        tile = _create_tile(lat, lon, tile_cfg, custom_dem)
+        tile = create_configured_tile(lat, lon, output_dir, _to_dict(tile_cfg), custom_dem)
         if MESH.build_mesh(tile) == 0:
             raise RuntimeError("build_mesh failed")
 
     def build_masks(lat: int, lon: int, tile_cfg, custom_dem):
-        tile = _create_tile(lat, lon, tile_cfg, custom_dem)
+        tile = create_configured_tile(lat, lon, output_dir, _to_dict(tile_cfg), custom_dem)
         if MASK.build_masks(tile) == 0:
             raise RuntimeError("build_masks failed")
 
     def build_tile(lat: int, lon: int, tile_cfg, custom_dem):
-        tile = _create_tile(lat, lon, tile_cfg, custom_dem)
+        tile = create_configured_tile(lat, lon, output_dir, _to_dict(tile_cfg), custom_dem)
         if TILE.build_tile(tile) == 0:
             raise RuntimeError("build_tile failed")
         OVL.build_overlay(lat, lon)
-
-    def _create_tile(lat: int, lon: int, tile_cfg, custom_dem):
-        """Create an Ortho4XP Tile object with config applied."""
-        # Ensure trailing slash so build_dir creates tile subdirectory
-        output_path = str(output_dir)
-        if not output_path.endswith(("/", "\\")):
-            output_path += "/"
-        tile = CFG.Tile(lat, lon, output_path)
-        tile.make_dirs()
-        tile.read_from_config(use_global=True)
-
-        # Apply tile config values
-        for field in tile_cfg.__dataclass_fields__:
-            value = getattr(tile_cfg, field)
-            if hasattr(tile, field):
-                setattr(tile, field, value)
-
-        # Apply custom DEM if found
-        if custom_dem:
-            tile.custom_dem = str(custom_dem)
-
-        tile.write_to_config()
-        return tile
 
     return {
         "build_poly_file": build_poly_file,

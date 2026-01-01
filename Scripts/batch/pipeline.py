@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from .config import Config, TileConfig, get_tile_config
-from .ortho4xp_init import init_ortho4xp
+from .ortho4xp_init import create_configured_tile, init_ortho4xp
 from .runner import find_dem_for_tile
 from .state import (
     BatchState,
@@ -72,7 +72,6 @@ def _worker_process(
             return
 
         # Import processing modules
-        import O4_Config_Utils as CFG
         import O4_Mask_Utils as MASK
         import O4_Mesh_Utils as MESH
         import O4_Overlay_Utils as OVL
@@ -99,24 +98,9 @@ def _worker_process(
         UI.red_flag = 0
 
         try:
-            # Create tile object
-            output_path = task.output_dir
-            if not output_path.endswith(("/", "\\")):
-                output_path += "/"
-            tile = CFG.Tile(task.lat, task.lon, output_path)
-            tile.make_dirs()
-            tile.read_from_config(use_global=True)
-
-            # Apply tile config
-            for key, value in task.tile_cfg_dict.items():
-                if hasattr(tile, key):
-                    setattr(tile, key, value)
-
-            # Apply custom DEM
-            if task.custom_dem:
-                tile.custom_dem = task.custom_dem
-
-            tile.write_to_config()
+            tile = create_configured_tile(
+                task.lat, task.lon, task.output_dir, task.tile_cfg_dict, task.custom_dem
+            )
 
             # Step 1: Vector
             if VMAP.build_poly_file(tile) == 0:
@@ -155,9 +139,7 @@ class PipelineManager:
         config: Config,
         state: BatchState,
         state_path: Path,
-        callbacks: dict | None = None,  # Not used, kept for API compatibility
-        max_prep: int = 2,  # Now means max parallel processes
-        max_dsf: int = 1,   # Not used, kept for API compatibility
+        max_prep: int = 2,  # Number of parallel worker processes
         on_tile_start=None,
         on_tile_complete=None,
     ):
@@ -167,9 +149,7 @@ class PipelineManager:
             config: Batch configuration
             state: Batch state for tracking progress
             state_path: Path to save state file
-            callbacks: Not used (processes create their own)
             max_prep: Number of parallel worker processes
-            max_dsf: Not used (kept for API compatibility)
             on_tile_start: Optional callback when tile starts
             on_tile_complete: Optional callback when tile completes
         """
