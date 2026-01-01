@@ -221,13 +221,14 @@ def build_tile(tile):
                 "conversion workers.",
             )
             dico_conv_progress = {"done": 0, "bar": 3}
-            convert_workers = parallel_launch(
+            convert_workers, convert_success = parallel_launch(
                 IMG.convert_texture,
                 convert_queue,
                 max_convert_slots,
                 progress=dico_conv_progress,
             )
             convert_launched = True
+    conversion_ok = True
     build_dsf_thread.join()
     producer_done_event.set()
     if download_launched:
@@ -235,9 +236,11 @@ def build_tile(tile):
         if convert_launched:
             for _ in range(max_convert_slots):
                 convert_queue.put("quit")
-            parallel_join(convert_workers)
+            conversion_ok = parallel_join(convert_workers, convert_success)
             if UI.red_flag:
                 UI.vprint(1, "DDS conversion process interrupted.")
+            elif not conversion_ok:
+                UI.vprint(0, "ERROR: One or more texture conversions failed.")
             elif dico_conv_progress["done"] >= 1:
                 UI.vprint(1, " *DDS conversion of textures completed.")
     UI.vprint(1, " *Activating DSF file.")
@@ -278,6 +281,11 @@ def build_tile(tile):
     if UI.cleaning_level > 1 and not tile.grouped:
         remove_unwanted_textures(tile)
     UI.timings_and_bottom_line(timer)
+    if not conversion_ok:
+        UI.logprint(
+            "Step 3 for tile lat=", tile.lat, ", lon=", tile.lon, ": FAILED (texture conversion errors)."
+        )
+        return 0
     UI.logprint(
         "Step 3 for tile lat=", tile.lat, ", lon=", tile.lon, ": normal exit."
     )

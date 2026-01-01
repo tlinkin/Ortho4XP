@@ -19,7 +19,12 @@ class parallel_worker(threading.Thread):
                 except:
                     pass
                 return 1
-            self._success[0] = self._task(*args) and self._success[0]
+            try:
+                result = self._task(*args)
+                self._success[0] = result and self._success[0]
+            except Exception as e:
+                UI.vprint(0, f"ERROR in parallel worker: {e}")
+                self._success[0] = 0
             if self._progress:
                 self._progress["done"] += 1
                 UI.progress_bar(
@@ -52,13 +57,17 @@ def parallel_execute(task, queue, nbr_workers, progress=None):
 ################################################################################
 def parallel_launch(task, queue, nbr_workers, progress=None):
     workers = []
+    success = [1]  # Shared success tracker
     for _ in range(nbr_workers):
-        worker = parallel_worker(task, queue, progress)
+        worker = parallel_worker(task, queue, progress, success)
         worker.start()
         workers.append(worker)
-    return workers
+    return workers, success
 
 ################################################################################
-def parallel_join(workers):
+def parallel_join(workers, success=None):
     for worker in workers:
         worker.join()
+    if success is not None:
+        return success[0]
+    return 1
