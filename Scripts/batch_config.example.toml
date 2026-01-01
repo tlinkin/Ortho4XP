@@ -39,9 +39,9 @@ tiles = [
 # OPTIONAL: Pipeline Mode (for large batches)
 # ============================================================================
 [pipeline]
-enabled = false                       # Enable pipelined batch processing
-prep_workers = 2                      # Parallel tiles in prep stage (OSM+mesh+masks)
-dsf_workers = 1                       # Parallel tiles in DSF stage (downloads+converts)
+enabled = false                       # Enable parallel processing with separate processes
+prep_workers = 2                      # Number of parallel worker processes (each runs full tile)
+dsf_workers = 1                       # (unused, kept for compatibility)
 
 # ============================================================================
 # OPTIONAL: Application Settings

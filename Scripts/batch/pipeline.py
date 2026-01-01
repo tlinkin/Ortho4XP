@@ -1,17 +1,18 @@
-"""Pipelined batch processing for improved resource utilization.
+"""Pipelined batch processing using multiprocessing for true isolation.
 
-Runs prep stages (OSM, mesh, masks) for multiple tiles while DSF building
-proceeds on completed tiles, keeping network saturated.
+Uses separate processes instead of threads to avoid global state conflicts
+in the Ortho4XP modules. Each subprocess gets its own Python interpreter
+with isolated globals.
 """
 
 from __future__ import annotations
 
-import threading
+import multiprocessing as mp
+import os
+import sys
 from dataclasses import dataclass
-from enum import Enum
 from pathlib import Path
-from queue import Queue
-from typing import Callable
+from typing import Any
 
 from .config import Config, TileConfig, get_tile_config
 from .runner import find_dem_for_tile
@@ -19,45 +20,174 @@ from .state import (
     BatchState,
     ProcessingStep,
     make_tile_id,
-    mark_step_completed,
+    load_state,
+    save_state,
     mark_tile_completed,
     mark_tile_failed,
-    mark_tile_started,
-    save_state,
 )
 
 
-class PipelineStage(Enum):
-    """Pipeline stage for a tile."""
-
-    PENDING = "pending"
-    PREP = "prep"
-    DSF = "dsf"
-    COMPLETE = "complete"
-    FAILED = "failed"
-
-
 @dataclass
-class TileJob:
-    """Job representing a tile in the pipeline."""
+class TileTask:
+    """Serializable task for subprocess processing."""
 
     lat: int
     lon: int
-    tile_cfg: TileConfig
-    custom_dem: Path | None
-    stage: PipelineStage = PipelineStage.PENDING
-    error: str | None = None
+    tile_cfg_dict: dict[str, Any]  # Serialized TileConfig
+    custom_dem: str | None  # Path as string for serialization
+    output_dir: str
+    ortho4xp_dir: str
 
-    @property
-    def tile_id(self) -> str:
-        return make_tile_id(self.lat, self.lon)
+
+def _tile_cfg_to_dict(tile_cfg: TileConfig) -> dict[str, Any]:
+    """Convert TileConfig to dict for pickling."""
+    return {
+        field: getattr(tile_cfg, field)
+        for field in tile_cfg.__dataclass_fields__
+    }
+
+
+def _worker_process(
+    task_queue: mp.Queue,
+    result_queue: mp.Queue,
+    ortho4xp_dir: str,
+    config_dict: dict[str, Any],
+) -> None:
+    """Worker process that runs tile processing in isolation.
+
+    Each worker has its own Python interpreter with isolated global state.
+
+    Args:
+        task_queue: Queue to receive TileTask objects
+        result_queue: Queue to send results (tile_id, success, error)
+        ortho4xp_dir: Path to Ortho4XP directory
+        config_dict: Serialized batch config for directory overrides
+    """
+    # Change to Ortho4XP directory
+    os.chdir(ortho4xp_dir)
+    sys.path.insert(0, ortho4xp_dir)
+    sys.path.insert(0, str(Path(ortho4xp_dir) / "src"))
+
+    # Import and initialize Ortho4XP in this process
+    try:
+        import O4_File_Names as FNAMES
+
+        # Apply directory overrides if specified
+        if config_dict.get("osm_dir"):
+            FNAMES.OSM_dir = config_dict["osm_dir"]
+        if config_dict.get("elevation_dir"):
+            FNAMES.Elevation_dir = config_dict["elevation_dir"]
+        if config_dict.get("orthophotos_dir"):
+            FNAMES.Imagery_dir = config_dict["orthophotos_dir"]
+        if config_dict.get("masks_dir"):
+            FNAMES.Mask_dir = config_dict["masks_dir"]
+        if config_dict.get("geotiffs_dir"):
+            FNAMES.Geotiff_dir = config_dict["geotiffs_dir"]
+        if config_dict.get("patches_dir"):
+            FNAMES.Patch_dir = config_dict["patches_dir"]
+        if config_dict.get("tmp_dir"):
+            FNAMES.Tmp_dir = config_dict["tmp_dir"]
+
+        sys.path.append(FNAMES.Provider_dir)
+
+        # Create directories
+        for directory in (
+            FNAMES.Preview_dir,
+            FNAMES.Provider_dir,
+            FNAMES.Extent_dir,
+            FNAMES.Filter_dir,
+            FNAMES.OSM_dir,
+            FNAMES.Mask_dir,
+            FNAMES.Imagery_dir,
+            FNAMES.Elevation_dir,
+            FNAMES.Geotiff_dir,
+            FNAMES.Patch_dir,
+            FNAMES.Tile_dir,
+            FNAMES.Tmp_dir,
+        ):
+            if not os.path.isdir(directory):
+                os.makedirs(directory, exist_ok=True)
+
+        # Initialize providers
+        import O4_Imagery_Utils as IMG
+
+        IMG.initialize_extents_dict()
+        IMG.initialize_color_filters_dict()
+        IMG.initialize_providers_dict()
+        IMG.initialize_combined_providers_dict()
+
+        # Import processing modules
+        import O4_Config_Utils as CFG
+        import O4_Mask_Utils as MASK
+        import O4_Mesh_Utils as MESH
+        import O4_Overlay_Utils as OVL
+        import O4_Tile_Utils as TILE
+        import O4_Vector_Map as VMAP
+
+    except Exception as e:
+        # Send initialization error and exit
+        result_queue.put(("__init__", False, str(e)))
+        return
+
+    # Process tiles
+    while True:
+        task = task_queue.get()
+        if task is None:
+            # Poison pill - shutdown
+            break
+
+        tile_id = make_tile_id(task.lat, task.lon)
+
+        try:
+            # Create tile object
+            output_path = task.output_dir
+            if not output_path.endswith(("/", "\\")):
+                output_path += "/"
+            tile = CFG.Tile(task.lat, task.lon, output_path)
+            tile.make_dirs()
+            tile.read_from_config(use_global=True)
+
+            # Apply tile config
+            for key, value in task.tile_cfg_dict.items():
+                if hasattr(tile, key):
+                    setattr(tile, key, value)
+
+            # Apply custom DEM
+            if task.custom_dem:
+                tile.custom_dem = task.custom_dem
+
+            tile.write_to_config()
+
+            # Step 1: Vector
+            if VMAP.build_poly_file(tile) == 0:
+                raise RuntimeError("build_poly_file failed")
+
+            # Step 2: Mesh
+            if MESH.build_mesh(tile) == 0:
+                raise RuntimeError("build_mesh failed")
+
+            # Step 2.5: Masks
+            if MASK.build_masks(tile) == 0:
+                raise RuntimeError("build_masks failed")
+
+            # Step 3: Tile
+            if TILE.build_tile(tile) == 0:
+                raise RuntimeError("build_tile failed")
+
+            # Step 4: Overlay
+            OVL.build_overlay(task.lat, task.lon)
+
+            result_queue.put((tile_id, True, None))
+
+        except Exception as e:
+            result_queue.put((tile_id, False, str(e)))
 
 
 class PipelineManager:
-    """Manages pipelined batch processing.
+    """Manages parallel batch processing using multiprocessing.
 
-    Runs prep workers (OSM + mesh + masks) in parallel with DSF workers
-    (imagery download + conversion + DSF build) to maximize resource usage.
+    Uses separate processes instead of threads to achieve true isolation
+    of Ortho4XP's global state.
     """
 
     def __init__(
@@ -65,11 +195,11 @@ class PipelineManager:
         config: Config,
         state: BatchState,
         state_path: Path,
-        callbacks: dict[str, Callable],
-        max_prep: int = 2,
-        max_dsf: int = 1,
-        on_tile_start: Callable[[int, int], None] | None = None,
-        on_tile_complete: Callable[[int, int, bool], None] | None = None,
+        callbacks: dict | None = None,  # Not used, kept for API compatibility
+        max_prep: int = 2,  # Now means max parallel processes
+        max_dsf: int = 1,   # Not used, kept for API compatibility
+        on_tile_start=None,
+        on_tile_complete=None,
     ):
         """Initialize pipeline manager.
 
@@ -77,131 +207,35 @@ class PipelineManager:
             config: Batch configuration
             state: Batch state for tracking progress
             state_path: Path to save state file
-            callbacks: Dict with keys: build_poly_file, build_mesh, build_masks, build_tile
-            max_prep: Number of parallel prep workers
-            max_dsf: Number of parallel DSF workers
+            callbacks: Not used (processes create their own)
+            max_prep: Number of parallel worker processes
+            max_dsf: Not used (kept for API compatibility)
             on_tile_start: Optional callback when tile starts
             on_tile_complete: Optional callback when tile completes
         """
         self.config = config
         self.state = state
         self.state_path = state_path
-        self.callbacks = callbacks
-        self.max_prep = max_prep
-        self.max_dsf = max_dsf
+        self.max_workers = max(1, max_prep)  # Use max_prep as worker count
         self.on_tile_start = on_tile_start
         self.on_tile_complete = on_tile_complete
 
-        # Queues for passing work between stages
-        self.prep_queue: Queue[TileJob | None] = Queue()
-        self.dsf_queue: Queue[TileJob | None] = Queue()
+        # Find Ortho4XP directory (parent of Scripts)
+        self.ortho4xp_dir = str(Path(__file__).resolve().parent.parent.parent)
 
-        # Synchronization
-        self.lock = threading.Lock()
-        self.shutdown_event = threading.Event()
-
-        # Counters
-        self.succeeded = 0
-        self.failed = 0
-
-    def prep_worker(self, worker_id: int) -> None:
-        """Worker thread for prep stage (OSM + mesh + masks).
-
-        Args:
-            worker_id: Worker identifier for logging
-        """
-        while not self.shutdown_event.is_set():
-            job = self.prep_queue.get()
-            if job is None:
-                # Poison pill - shutdown signal
-                break
-
-            job.stage = PipelineStage.PREP
-
-            try:
-                # Step 1: Vector/OSM
-                self.callbacks["build_poly_file"](
-                    job.lat, job.lon, job.tile_cfg, job.custom_dem
-                )
-                with self.lock:
-                    mark_step_completed(self.state, job.tile_id, ProcessingStep.VECTOR.value)
-
-                # Step 2: Mesh
-                self.callbacks["build_mesh"](
-                    job.lat, job.lon, job.tile_cfg, job.custom_dem
-                )
-                with self.lock:
-                    mark_step_completed(self.state, job.tile_id, ProcessingStep.MESH.value)
-
-                # Step 2.5: Masks
-                self.callbacks["build_masks"](
-                    job.lat, job.lon, job.tile_cfg, job.custom_dem
-                )
-                with self.lock:
-                    mark_step_completed(self.state, job.tile_id, ProcessingStep.MASKS.value)
-
-                # Hand off to DSF stage
-                self.dsf_queue.put(job)
-
-            except Exception as e:
-                job.stage = PipelineStage.FAILED
-                job.error = str(e)
-                print(f"ERROR: Prep failed for {job.tile_id}: {e}")
-                with self.lock:
-                    mark_tile_failed(self.state, job.tile_id, str(e), "prep")
-                    self.failed += 1
-                    self._save_state()
-                if self.on_tile_complete:
-                    self.on_tile_complete(job.lat, job.lon, False)
-
-    def dsf_worker(self, worker_id: int) -> None:
-        """Worker thread for DSF stage (imagery + conversion + DSF).
-
-        Args:
-            worker_id: Worker identifier for logging
-        """
-        while not self.shutdown_event.is_set():
-            job = self.dsf_queue.get()
-            if job is None:
-                # Poison pill - shutdown signal
-                break
-
-            job.stage = PipelineStage.DSF
-
-            try:
-                # Step 3: Tile (downloads, converts, builds DSF)
-                self.callbacks["build_tile"](
-                    job.lat, job.lon, job.tile_cfg, job.custom_dem
-                )
-
-                # Mark completed
-                job.stage = PipelineStage.COMPLETE
-                completed_steps = [s.value for s in ProcessingStep]
-                with self.lock:
-                    mark_tile_completed(self.state, job.tile_id, completed_steps)
-                    self.succeeded += 1
-                    self._save_state()
-
-                if self.on_tile_complete:
-                    self.on_tile_complete(job.lat, job.lon, True)
-
-            except Exception as e:
-                job.stage = PipelineStage.FAILED
-                job.error = str(e)
-                print(f"ERROR: DSF failed for {job.tile_id}: {e}")
-                with self.lock:
-                    mark_tile_failed(self.state, job.tile_id, str(e), ProcessingStep.TILE.value)
-                    self.failed += 1
-                    self._save_state()
-                if self.on_tile_complete:
-                    self.on_tile_complete(job.lat, job.lon, False)
-
-    def _save_state(self) -> None:
-        """Save state to disk (must be called with lock held)."""
-        save_state(self.state, self.state_path)
+        # Prepare config dict for workers
+        self.config_dict = {
+            "osm_dir": str(config.batch.osm_dir) if config.batch.osm_dir else None,
+            "elevation_dir": str(config.batch.elevation_dir) if config.batch.elevation_dir else None,
+            "orthophotos_dir": str(config.batch.orthophotos_dir) if config.batch.orthophotos_dir else None,
+            "masks_dir": str(config.batch.masks_dir) if config.batch.masks_dir else None,
+            "geotiffs_dir": str(config.batch.geotiffs_dir) if config.batch.geotiffs_dir else None,
+            "patches_dir": str(config.batch.patches_dir) if config.batch.patches_dir else None,
+            "tmp_dir": str(config.batch.tmp_dir) if config.batch.tmp_dir else None,
+        }
 
     def run(self, tiles: list[tuple[int, int]]) -> tuple[int, int, int]:
-        """Run pipelined processing on all tiles.
+        """Run parallel processing on all tiles.
 
         Args:
             tiles: List of (lat, lon) tuples to process
@@ -212,55 +246,91 @@ class PipelineManager:
         if not tiles:
             return 0, 0, 0
 
-        # Create jobs for all tiles
-        jobs: list[TileJob] = []
+        # Create queues
+        task_queue: mp.Queue = mp.Queue()
+        result_queue: mp.Queue = mp.Queue()
+
+        # Start worker processes
+        workers = []
+        for _ in range(self.max_workers):
+            p = mp.Process(
+                target=_worker_process,
+                args=(task_queue, result_queue, self.ortho4xp_dir, self.config_dict),
+            )
+            p.start()
+            workers.append(p)
+
+        # Queue all tasks
+        output_dir = str(self.config.batch.output_dir)
         for lat, lon in tiles:
             tile_cfg = get_tile_config(self.config, lat, lon)
             custom_dem = find_dem_for_tile(lat, lon, self.config.batch.dem_dir)
-            job = TileJob(lat, lon, tile_cfg, custom_dem)
-            jobs.append(job)
 
-            # Mark started in state
-            with self.lock:
-                mark_tile_started(self.state, job.tile_id)
+            task = TileTask(
+                lat=lat,
+                lon=lon,
+                tile_cfg_dict=_tile_cfg_to_dict(tile_cfg),
+                custom_dem=str(custom_dem) if custom_dem else None,
+                output_dir=output_dir,
+                ortho4xp_dir=self.ortho4xp_dir,
+            )
+            task_queue.put(task)
+
             if self.on_tile_start:
                 self.on_tile_start(lat, lon)
 
-        # Start worker threads
-        prep_threads = [
-            threading.Thread(target=self.prep_worker, args=(i,), daemon=True)
-            for i in range(self.max_prep)
-        ]
-        dsf_threads = [
-            threading.Thread(target=self.dsf_worker, args=(i,), daemon=True)
-            for i in range(self.max_dsf)
-        ]
+        # Send poison pills
+        for _ in range(self.max_workers):
+            task_queue.put(None)
 
-        for t in prep_threads + dsf_threads:
-            t.start()
+        # Collect results
+        succeeded = 0
+        failed = 0
+        results_collected = 0
 
-        # Queue all jobs for prep stage
-        for job in jobs:
-            self.prep_queue.put(job)
+        while results_collected < len(tiles):
+            tile_id, success, error = result_queue.get()
 
-        # Send poison pills to prep workers
-        for _ in range(self.max_prep):
-            self.prep_queue.put(None)
+            if tile_id == "__init__":
+                # Worker initialization failed
+                print(f"ERROR: Worker initialization failed: {error}")
+                failed += len(tiles) - results_collected
+                break
 
-        # Wait for prep workers to finish
-        for t in prep_threads:
-            t.join()
+            results_collected += 1
 
-        # Send poison pills to DSF workers
-        for _ in range(self.max_dsf):
-            self.dsf_queue.put(None)
+            if success:
+                succeeded += 1
+                # Update state
+                completed_steps = [s.value for s in ProcessingStep]
+                mark_tile_completed(self.state, tile_id, completed_steps)
+            else:
+                failed += 1
+                print(f"ERROR: {tile_id} failed: {error}")
+                mark_tile_failed(self.state, tile_id, error or "Unknown error", "tile")
 
-        # Wait for DSF workers to finish
-        for t in dsf_threads:
-            t.join()
+            save_state(self.state, self.state_path)
 
-        return len(tiles), self.succeeded, self.failed
+            # Parse tile_id back to lat/lon for callback
+            if self.on_tile_complete:
+                # Parse "+45-122" format
+                parts = tile_id.replace("+", " +").replace("-", " -").split()
+                if len(parts) >= 2:
+                    try:
+                        lat = int(parts[0])
+                        lon = int(parts[1])
+                        self.on_tile_complete(lat, lon, success)
+                    except ValueError:
+                        pass
+
+        # Wait for workers to finish
+        for p in workers:
+            p.join(timeout=5)
+            if p.is_alive():
+                p.terminate()
+
+        return len(tiles), succeeded, failed
 
     def shutdown(self) -> None:
-        """Signal shutdown to all workers."""
-        self.shutdown_event.set()
+        """Signal shutdown (not currently used with processes)."""
+        pass
