@@ -122,6 +122,7 @@ def _worker_process(
         import O4_Mesh_Utils as MESH
         import O4_Overlay_Utils as OVL
         import O4_Tile_Utils as TILE
+        import O4_UI_Utils as UI
         import O4_Vector_Map as VMAP
 
     except Exception as e:
@@ -137,6 +138,10 @@ def _worker_process(
             break
 
         tile_id = make_tile_id(task.lat, task.lon)
+
+        # Reset UI flags to ensure clean state for each tile
+        UI.is_working = 0
+        UI.red_flag = 0
 
         try:
             # Create tile object

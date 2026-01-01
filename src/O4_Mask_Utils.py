@@ -470,10 +470,11 @@ def record_water_tris(tile):
                 UI.progress_bar(1, int(percent * 5 / 10))
                 if UI.red_flag:
                     UI.exit_message_and_bottom_line()
-                    return 0
-            (n1, n2, n3, tri_type) = [
-                int(x) - 1 for x in f_mesh.readline().split()[:4]
-            ]
+                    return ({}, {})
+            parts = f_mesh.readline().split()
+            if len(parts) < 4:
+                continue  # Skip malformed lines
+            (n1, n2, n3, tri_type) = [int(x) - 1 for x in parts[:4]]
             tri_type += 1
             if (
                 (not tri_type)
@@ -601,10 +602,11 @@ def record_water_tris(tile):
                     UI.progress_bar(1, int(percent * 5 / 10))
                     if UI.red_flag:
                         UI.exit_message_and_bottom_line()
-                        return 0
-                (n1, n2, n3, tri_type) = [
-                    int(x) - 1 for x in f_mesh.readline().split()[:4]
-                ]
+                        return ({}, {})
+                parts = f_mesh.readline().split()
+                if len(parts) < 4:
+                    continue  # Skip malformed lines
+                (n1, n2, n3, tri_type) = [int(x) - 1 for x in parts[:4]]
                 tri_type += 1
                 if not (tri_type & has_water) == 1:
                     continue
