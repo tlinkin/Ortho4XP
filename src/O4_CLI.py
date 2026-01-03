@@ -226,24 +226,52 @@ Tile list file format (one tile per line):
 def parse_tile_list(filepath: str) -> List[Tuple[int, int]]:
     """Parse tile list file.
 
-    Format: lat,lon per line, # for comments, blank lines ignored.
+    Format per line:
+      - lat,lon         # coordinate pair
+      - ISO3            # 3-letter country code (e.g., USA, FRA)
+      - country name    # full country name (e.g., Switzerland)
+      - continent       # continent name (e.g., Europe, Asia)
+      - # comment       # lines starting with # are ignored
     """
+    from O4_Geo_Tiles import list_tiles_for_countries, list_tiles_for_continent
+
+    CONTINENTS = {'europe', 'africa', 'asia', 'oceania',
+                  'americas', 'north america', 'south america', 'antarctica'}
+
     tiles = []
     with open(filepath, 'r') as f:
         for line_num, line in enumerate(f, 1):
             line = line.strip()
             if not line or line.startswith('#'):
                 continue
+
+            # Try coordinate format first (contains comma)
+            if ',' in line:
+                try:
+                    parts = line.split(',')
+                    if len(parts) != 2:
+                        raise ValueError("Expected lat,lon format")
+                    lat = int(parts[0].strip())
+                    lon = int(parts[1].strip())
+                    tiles.append((lat, lon))
+                except ValueError as e:
+                    print(f"Warning: Skipping invalid line {line_num}: {line} ({e})")
+                continue
+
+            # Try as country/continent identifier
             try:
-                parts = line.split(',')
-                if len(parts) != 2:
-                    raise ValueError("Expected lat,lon format")
-                lat = int(parts[0].strip())
-                lon = int(parts[1].strip())
-                tiles.append((lat, lon))
-            except ValueError as e:
-                print(f"Warning: Skipping invalid line {line_num}: {line} ({e})")
-    return tiles
+                if line.lower() in CONTINENTS:
+                    country_tiles = list_tiles_for_continent(line)
+                else:
+                    country_tiles = list_tiles_for_countries([line])
+
+                print(f"Expanded '{line}' to {len(country_tiles)} tiles")
+                tiles.extend(country_tiles)
+            except Exception as e:
+                print(f"Warning: Could not resolve '{line}': {e}")
+
+    # Deduplicate while preserving order
+    return list(dict.fromkeys(tiles))
 
 
 def get_steps_from_args(args: argparse.Namespace) -> Dict[str, bool]:
