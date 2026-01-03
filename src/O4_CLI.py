@@ -43,14 +43,58 @@ def parse_hgt_filename(filename: str) -> Optional[Tuple[int, int]]:
 
 
 def organize_dem_files(source_dir: str) -> int:
-    """Organize DEM .hgt files from a flat directory into Elevation_data structure.
+    """Organize DEM .hgt/.tif files from a directory into Elevation_data structure.
 
     Copies files from source_dir to Elevation_data/<subfolder>/ where subfolder
     is determined by rounding lat/lon to nearest 10 degrees.
 
+    Files that are not 3601x3601 (SRTM 1") will be automatically resampled
+    using GDAL. This handles LIDAR data and Copernicus GLO-30 (7201x7201).
+
     Returns exit code: 0 on success, 1 on errors.
     """
     import O4_File_Names as FNAMES
+    from math import sqrt
+
+    try:
+        from osgeo import gdal
+        gdal.UseExceptions()
+        has_gdal = True
+    except ImportError:
+        has_gdal = False
+
+    TARGET_SIZE = 3601
+    SRTM_1_FILESIZE = 3601 * 3601 * 2  # 25,934,402 bytes
+    SRTM_3_FILESIZE = 1201 * 1201 * 2  # 2,884,802 bytes (OK, gets upsampled later)
+
+    def get_hgt_dimensions(filepath: str) -> int:
+        """Get dimension of .hgt file from filesize."""
+        size = os.path.getsize(filepath)
+        dim = int(round(sqrt(size / 2)))
+        return dim
+
+    def get_raster_dimensions(filepath: str) -> Tuple[int, int]:
+        """Get dimensions of any raster file using GDAL."""
+        ds = gdal.Open(filepath)
+        if ds is None:
+            raise ValueError(f"Cannot open {filepath}")
+        width, height = ds.RasterXSize, ds.RasterYSize
+        ds = None
+        return (width, height)
+
+    def resample_dem(src_path: str, dest_path: str) -> bool:
+        """Resample DEM file to 3601x3601 using GDAL."""
+        try:
+            gdal.Warp(
+                dest_path, src_path,
+                width=TARGET_SIZE, height=TARGET_SIZE,
+                resampleAlg='cubic',
+                format='SRTMHGT' if dest_path.endswith('.hgt') else None
+            )
+            return True
+        except Exception as e:
+            print(f"    GDAL error: {e}")
+            return False
 
     if not os.path.isdir(source_dir):
         print(f"Error: Directory not found: {source_dir}")
@@ -58,21 +102,30 @@ def organize_dem_files(source_dir: str) -> int:
 
     elevation_dir = FNAMES.Elevation_dir
     copied = 0
+    resampled = 0
     skipped_invalid = 0
     skipped_exists = 0
+    skipped_srtm3 = 0
     errors = 0
 
-    # Find all .hgt files
-    hgt_files = [f for f in os.listdir(source_dir) if f.lower().endswith('.hgt')]
+    # Find all DEM files
+    dem_files = [f for f in os.listdir(source_dir)
+                 if f.lower().endswith(('.hgt', '.tif', '.tiff'))]
 
-    if not hgt_files:
-        print(f"No .hgt files found in {source_dir}")
+    if not dem_files:
+        print(f"No .hgt/.tif files found in {source_dir}")
         return 0
 
-    print(f"Found {len(hgt_files)} .hgt file(s) in {source_dir}")
+    print(f"Found {len(dem_files)} DEM file(s) in {source_dir}")
+    if not has_gdal:
+        print("Warning: GDAL not available - resampling disabled")
 
-    for filename in hgt_files:
-        coords = parse_hgt_filename(filename)
+    for filename in dem_files:
+        source_path = os.path.join(source_dir, filename)
+
+        # Parse coordinates from filename
+        base_name = os.path.splitext(filename)[0]
+        coords = parse_hgt_filename(base_name + '.hgt')
         if coords is None:
             print(f"  Skipping {filename}: invalid naming pattern")
             skipped_invalid += 1
@@ -81,8 +134,8 @@ def organize_dem_files(source_dir: str) -> int:
         lat, lon = coords
         subfolder = FNAMES.round_latlon(lat, lon)
         dest_dir = os.path.join(elevation_dir, subfolder)
-        dest_path = os.path.join(dest_dir, filename)
-        source_path = os.path.join(source_dir, filename)
+        dest_filename = f"{base_name}.hgt"  # Always output as .hgt
+        dest_path = os.path.join(dest_dir, dest_filename)
 
         # Check if destination exists
         if os.path.exists(dest_path):
@@ -90,19 +143,64 @@ def organize_dem_files(source_dir: str) -> int:
             skipped_exists += 1
             continue
 
-        # Create destination directory if needed
+        # Check dimensions
         try:
-            os.makedirs(dest_dir, exist_ok=True)
-            shutil.copy2(source_path, dest_path)
-            print(f"  Copied {filename} -> {subfolder}/")
-            copied += 1
+            if filename.lower().endswith('.hgt'):
+                dim = get_hgt_dimensions(source_path)
+                needs_resample = dim != TARGET_SIZE and dim != 1201
+                dim_str = f"{dim}x{dim}"
+            else:
+                if not has_gdal:
+                    print(f"  Skipping {filename}: GDAL required for .tif files")
+                    errors += 1
+                    continue
+                width, height = get_raster_dimensions(source_path)
+                needs_resample = width != TARGET_SIZE or height != TARGET_SIZE
+                dim_str = f"{width}x{height}"
+
+            # Handle SRTM 3" (1201x1201) - just copy, will be upsampled at runtime
+            if filename.lower().endswith('.hgt'):
+                dim = get_hgt_dimensions(source_path)
+                if dim == 1201:
+                    os.makedirs(dest_dir, exist_ok=True)
+                    shutil.copy2(source_path, dest_path)
+                    print(f"  {filename}: 1201x1201 (SRTM 3\") -> {subfolder}/ (will upsample at runtime)")
+                    skipped_srtm3 += 1
+                    copied += 1
+                    continue
+
+            if needs_resample:
+                if not has_gdal:
+                    print(f"  Skipping {filename}: {dim_str} needs resampling but GDAL not available")
+                    errors += 1
+                    continue
+
+                print(f"  {filename}: {dim_str} -> resampling to {TARGET_SIZE}x{TARGET_SIZE}")
+                os.makedirs(dest_dir, exist_ok=True)
+                if resample_dem(source_path, dest_path):
+                    print(f"    -> {subfolder}/{dest_filename}")
+                    resampled += 1
+                    copied += 1
+                else:
+                    errors += 1
+            else:
+                # Copy directly
+                os.makedirs(dest_dir, exist_ok=True)
+                shutil.copy2(source_path, dest_path)
+                print(f"  {filename}: {dim_str} (OK) -> {subfolder}/")
+                copied += 1
+
         except Exception as e:
-            print(f"  Error copying {filename}: {e}")
+            print(f"  Error processing {filename}: {e}")
             errors += 1
 
     # Summary
     print(f"\nSummary:")
     print(f"  Copied: {copied}")
+    if resampled:
+        print(f"  Resampled: {resampled}")
+    if skipped_srtm3:
+        print(f"  SRTM 3\" (will upsample at runtime): {skipped_srtm3}")
     if skipped_invalid:
         print(f"  Skipped (invalid name): {skipped_invalid}")
     if skipped_exists:
