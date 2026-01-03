@@ -274,6 +274,8 @@ Tile list file format (one tile per line):
                         help='Override imagery provider code')
     parser.add_argument('--zl', type=int, metavar='INT',
                         help='Override zoom level')
+    parser.add_argument('--iterate', type=int, metavar='INT',
+                        help='Override mesh iterate value (for LIDAR refinement)')
 
     # Config control
     parser.add_argument('--config', '-c', metavar='FILE',
@@ -410,6 +412,7 @@ def build_single_tile(
     steps: Dict[str, bool],
     provider: Optional[str],
     zl: Optional[int],
+    iterate: Optional[int],
     config_file: Optional[str],
     use_global_config: bool,
     build_dir: Optional[str],
@@ -453,6 +456,8 @@ def build_single_tile(
             tile.default_website = provider
         if zl:
             tile.default_zl = zl
+        if iterate is not None:
+            tile.iterate = iterate
 
         if steps['do_osm'] or steps['do_mesh'] or steps['do_dsf']:
             tile.make_dirs()
@@ -499,6 +504,7 @@ def run_batch(
     steps: Dict[str, bool],
     provider: Optional[str],
     zl: Optional[int],
+    iterate: Optional[int],
     config_file: Optional[str],
     use_global_config: bool,
     build_dir: Optional[str],
@@ -534,7 +540,7 @@ def run_batch(
                 print(f"[{i+1}/{len(tiles)}] Processing tile {lat:+d},{lon:+d}...")
 
             result = build_single_tile(
-                lat, lon, steps, provider, zl,
+                lat, lon, steps, provider, zl, iterate,
                 config_file, use_global_config, build_dir, verbosity
             )
             results.append(result)
@@ -554,7 +560,7 @@ def run_batch(
             futures = {
                 executor.submit(
                     build_single_tile,
-                    lat, lon, steps, provider, zl,
+                    lat, lon, steps, provider, zl, iterate,
                     config_file, use_global_config, build_dir, verbosity
                 ): (lat, lon)
                 for lat, lon in tiles
@@ -636,6 +642,7 @@ def main(args: List[str] = None) -> int:
         steps=steps,
         provider=parsed.provider,
         zl=parsed.zl,
+        iterate=parsed.iterate,
         config_file=parsed.config,
         use_global_config=parsed.global_config,
         build_dir=parsed.build_dir,
