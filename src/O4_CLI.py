@@ -3,6 +3,8 @@
 import argparse
 import sys
 import os
+import re
+import shutil
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from typing import List, Tuple, Optional, Dict
@@ -12,6 +14,103 @@ try:
     HAS_TQDM = True
 except ImportError:
     HAS_TQDM = False
+
+
+def parse_hgt_filename(filename: str) -> Optional[Tuple[int, int]]:
+    """Parse HGT filename to extract lat/lon coordinates.
+
+    Examples:
+        N50E010.hgt -> (50, 10)
+        S45W073.hgt -> (-45, -73)
+
+    Returns None if filename doesn't match expected pattern.
+    """
+    pattern = r'^([NS])(\d{2})([EW])(\d{3})\.hgt$'
+    match = re.match(pattern, filename, re.IGNORECASE)
+    if not match:
+        return None
+
+    ns, lat_str, ew, lon_str = match.groups()
+    lat = int(lat_str)
+    lon = int(lon_str)
+
+    if ns.upper() == 'S':
+        lat = -lat
+    if ew.upper() == 'W':
+        lon = -lon
+
+    return (lat, lon)
+
+
+def organize_dem_files(source_dir: str) -> int:
+    """Organize DEM .hgt files from a flat directory into Elevation_data structure.
+
+    Copies files from source_dir to Elevation_data/<subfolder>/ where subfolder
+    is determined by rounding lat/lon to nearest 10 degrees.
+
+    Returns exit code: 0 on success, 1 on errors.
+    """
+    import O4_File_Names as FNAMES
+
+    if not os.path.isdir(source_dir):
+        print(f"Error: Directory not found: {source_dir}")
+        return 1
+
+    elevation_dir = FNAMES.Elevation_dir
+    copied = 0
+    skipped_invalid = 0
+    skipped_exists = 0
+    errors = 0
+
+    # Find all .hgt files
+    hgt_files = [f for f in os.listdir(source_dir) if f.lower().endswith('.hgt')]
+
+    if not hgt_files:
+        print(f"No .hgt files found in {source_dir}")
+        return 0
+
+    print(f"Found {len(hgt_files)} .hgt file(s) in {source_dir}")
+
+    for filename in hgt_files:
+        coords = parse_hgt_filename(filename)
+        if coords is None:
+            print(f"  Skipping {filename}: invalid naming pattern")
+            skipped_invalid += 1
+            continue
+
+        lat, lon = coords
+        subfolder = FNAMES.round_latlon(lat, lon)
+        dest_dir = os.path.join(elevation_dir, subfolder)
+        dest_path = os.path.join(dest_dir, filename)
+        source_path = os.path.join(source_dir, filename)
+
+        # Check if destination exists
+        if os.path.exists(dest_path):
+            print(f"  Skipping {filename}: already exists in {subfolder}/")
+            skipped_exists += 1
+            continue
+
+        # Create destination directory if needed
+        try:
+            os.makedirs(dest_dir, exist_ok=True)
+            shutil.copy2(source_path, dest_path)
+            print(f"  Copied {filename} -> {subfolder}/")
+            copied += 1
+        except Exception as e:
+            print(f"  Error copying {filename}: {e}")
+            errors += 1
+
+    # Summary
+    print(f"\nSummary:")
+    print(f"  Copied: {copied}")
+    if skipped_invalid:
+        print(f"  Skipped (invalid name): {skipped_invalid}")
+    if skipped_exists:
+        print(f"  Skipped (already exists): {skipped_exists}")
+    if errors:
+        print(f"  Errors: {errors}")
+
+    return 1 if errors else 0
 
 
 def parse_args(args: List[str] = None) -> argparse.Namespace:
@@ -52,6 +151,10 @@ Tile list file format (one tile per line):
                         help='Longitude for single tile')
     parser.add_argument('--batch', '-b', metavar='FILE',
                         help='File containing tile list (lat,lon per line)')
+
+    # Utility commands
+    parser.add_argument('--organize-dem', metavar='DIR',
+                        help='Organize DEM .hgt files from DIR into Elevation_data')
 
     # Step selection
     step_group = parser.add_mutually_exclusive_group()
@@ -103,14 +206,19 @@ Tile list file format (one tile per line):
     parsed = parser.parse_args(args)
 
     # Validation
-    if parsed.batch is None and parsed.lat is None:
-        parser.error('Either lat/lon or --batch is required')
+    organize_dem = getattr(parsed, 'organize_dem', None)
+
+    if organize_dem is None and parsed.batch is None and parsed.lat is None:
+        parser.error('Either lat/lon, --batch, or --organize-dem is required')
 
     if parsed.lat is not None and parsed.lon is None:
         parser.error('lon is required when lat is specified')
 
     if parsed.batch and parsed.lat is not None:
         parser.error('Cannot use both lat/lon and --batch')
+
+    if organize_dem and (parsed.batch or parsed.lat is not None):
+        parser.error('--organize-dem cannot be combined with tile processing')
 
     return parsed
 
@@ -365,6 +473,10 @@ def run_batch(
 def main(args: List[str] = None) -> int:
     """Main CLI entry point."""
     parsed = parse_args(args)
+
+    # Handle utility commands
+    if parsed.organize_dem:
+        return organize_dem_files(parsed.organize_dem)
 
     # Set verbosity
     verbosity = 0 if parsed.quiet else parsed.verbose
